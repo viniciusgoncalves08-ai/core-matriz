@@ -6,13 +6,18 @@ export type NexusContext = {
   tasks: Array<{ id: string; title: string; status: string; dueAt: Date | null }>;
 };
 
+export function extractContextTerms(message: string): string[] {
+  return [...new Set(
+    message
+      .toLowerCase()
+      .split(/\s+/)
+      .map((term) => term.replace(/[^\p{L}\p{N}]/gu, ""))
+      .filter((term) => term.length >= 4),
+  )].slice(0, 8);
+}
+
 export async function buildContext(userId: string, message: string): Promise<NexusContext> {
-  const terms = message
-    .toLowerCase()
-    .split(/\s+/)
-    .map((term) => term.replace(/[^\p{L}\p{N}]/gu, ""))
-    .filter((term) => term.length >= 4)
-    .slice(0, 8);
+  const terms = extractContextTerms(message);
 
   const textFilters = terms.flatMap((term) => [
     { content: { contains: term, mode: "insensitive" as const } },
