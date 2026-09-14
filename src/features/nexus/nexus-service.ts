@@ -1,8 +1,6 @@
-import { OpenAIProvider } from "@/ai/openai-provider";
+import { modelRouter } from "@/ai/model-router";
 import { buildContext, serializeContext } from "@/features/context/context-engine";
 import { db } from "@/lib/db";
-
-const provider = new OpenAIProvider();
 
 const NEXUS_SYSTEM_PROMPT = `Você é o Nexus, interface central do Core Matriz.
 Seja direto, analítico, profissional, crítico e honesto.
@@ -33,13 +31,22 @@ export async function respondAsNexus(params: {
   });
 
   try {
-    const result = await provider.generate({
-      messages: [
-        { role: "system", content: NEXUS_SYSTEM_PROMPT },
-        { role: "system", content: `Contexto recuperado:\n${serializeContext(context)}` },
-        { role: "user", content: params.message },
+    const result = await modelRouter.generate(
+      {
+        messages: [
+          { role: "system", content: NEXUS_SYSTEM_PROMPT },
+          { role: "system", content: `Contexto recuperado:\n${serializeContext(context)}` },
+          { role: "user", content: params.message },
+        ],
+        temperature: 0.2,
+      },
+      [
+        {
+          provider: process.env.AI_DEFAULT_PROVIDER ?? "openai",
+          model: process.env.AI_DEFAULT_MODEL ?? "gpt-5",
+        },
       ],
-    });
+    );
 
     const assistantMessage = await db.message.create({
       data: {
