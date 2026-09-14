@@ -17,7 +17,7 @@ const navItems = [
 const bottomNavItems = [
   { href: "/", label: "Home" },
   { href: "/#nexus", label: "Nexus" },
-  { href: "/projetos", label: "Projetos" },
+  { href: "/historico", label: "Histórico" },
   { href: "/memoria", label: "Memória" },
 ];
 
@@ -42,7 +42,7 @@ export function AppShell({ active, eyebrow = "CORE MATRIZ", title, description, 
           </div>
         </a>
         <nav>
-          {navItems.map((item) => (
+          {navItems.filter(item => ["Home", "Nexus", "Memória", "Histórico"].includes(item.label)).map((item) => (
             <a className={item.label === active ? "active" : ""} href={item.href} key={item.label}>
               {item.label}
             </a>

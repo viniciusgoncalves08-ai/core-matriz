@@ -47,7 +47,7 @@ export async function updateMemory(input: {
   reason?: string;
 }) {
   return db.$transaction(async (tx) => {
-    const current = await tx.memory.findFirst({ where: { id: input.memoryId, userId: input.userId } });
+    const current = await tx.memory.findFirst({ where: { id: input.memoryId, userId: input.userId, status: { not: "DELETED" } } });
     if (!current) throw new Error("Memória não encontrada");
 
     await tx.memoryVersion.create({
@@ -65,7 +65,7 @@ export async function updateMemory(input: {
       data: {
         content: input.content,
         summary: input.summary,
-        status: "ACTIVE",
+        status: current.status,
         validFrom: new Date(),
         validUntil: null,
       },
@@ -73,8 +73,14 @@ export async function updateMemory(input: {
   });
 }
 
-export async function blockMemory(userId: string, memoryId: string) {
-  const memory = await db.memory.findFirst({ where: { id: memoryId, userId } });
-  if (!memory) throw new Error("Memória não encontrada");
-  return db.memory.update({ where: { id: memoryId }, data: { status: "BLOCKED" } });
+export async function setMemoryStatus(userId: string, memoryId: string, status: "ACTIVE" | "BLOCKED" | "DELETED") {
+  return db.$transaction(async tx => {
+    const memory = await tx.memory.findFirst({ where: { id: memoryId, userId, status: { not: "DELETED" } } });
+    if (!memory) throw new Error("Memória não encontrada");
+    await tx.memoryVersion.create({ data: {
+      memoryId, content: memory.content, summary: memory.summary, status: memory.status,
+      reason: status === "BLOCKED" ? "Bloqueada pelo usuário" : status === "ACTIVE" ? "Desbloqueada pelo usuário" : "Exclusão solicitada pelo usuário",
+    } });
+    return tx.memory.update({ where: { id: memoryId }, data: { status, validUntil: status === "DELETED" ? new Date() : null } });
+  });
 }
