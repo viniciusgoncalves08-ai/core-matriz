@@ -121,3 +121,9 @@ Integrações externas não devem exibir sucesso enquanto não houver execução
 ## Verificações desta etapa
 
 Testes unitários cobrem continuidade cronológica, recusa de acesso a conversa de outro usuário, preservação de bloqueio na edição e histórico de mudanças de estado. O build não exige banco ativo. Os fluxos reais de cadastro, persistência e resposta da IA precisam de PostgreSQL com schema aplicado e das variáveis de ambiente configuradas; testes unitários usam dependências simuladas.
+
+## Banco na publicação Vercel
+
+A publicação de produção gera o Prisma Client, compila o app e aplica as migrations versionadas com `prisma migrate deploy`. Se a migração falhar, a nova publicação é interrompida. A conexão usa `DATABASE_URL_UNPOOLED` do Neon quando disponível, com fallback para `DATABASE_URL`. Previews não migram o banco compartilhado.
+
+A migration inicial cria o schema em um banco vazio. Bancos já existentes sem histórico de migrations exigem avaliação e baseline; o processo não apaga ou reinicializa dados. O CI valida a criação em PostgreSQL, a segunda execução e a correspondência com o schema.
