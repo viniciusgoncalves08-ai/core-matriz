@@ -20,6 +20,16 @@ export async function respondAsNexus(params: {
 
   if (!conversation) throw new Error("Conversa não encontrada ou sem permissão de acesso.");
 
+  const recentMessages = await db.message.findMany({
+    where: { conversationId: conversation.id, role: { in: ["user", "assistant"] } },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+    select: { role: true, content: true },
+  });
+  const history = recentMessages.reverse().map(message => ({
+    role: message.role as "user" | "assistant", content: message.content,
+  }));
+
   const context = await buildContext(params.userId, params.message);
 
   await db.message.create({
@@ -36,6 +46,7 @@ export async function respondAsNexus(params: {
         messages: [
           { role: "system", content: NEXUS_SYSTEM_PROMPT },
           { role: "system", content: `Contexto recuperado:\n${serializeContext(context)}` },
+          ...history,
           { role: "user", content: params.message },
         ],
         temperature: 0.2,

@@ -4,23 +4,24 @@ import { FormEvent, useState } from "react";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-export function NexusChat() {
-  const [conversationId, setConversationId] = useState<string | null>(null);
+export function NexusChat({ initialConversationId = null, initialMessages = [] }: { initialConversationId?: string | null; initialMessages?: ChatMessage[] }) {
+  const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function ensureConversation() {
+  async function ensureConversation(title: string) {
     if (conversationId) return conversationId;
     const response = await fetch("/api/conversations", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title: "Conversa com Nexus" }),
+      body: JSON.stringify({ title: title.slice(0, 120) }),
     });
     if (!response.ok) throw new Error(response.status === 401 ? "Faça login para conversar com o Nexus." : "Não foi possível criar a conversa.");
     const data = await response.json();
     setConversationId(data.conversation.id);
+    window.history.replaceState(null, "", `/historico/${data.conversation.id}`);
     return data.conversation.id as string;
   }
 
@@ -35,7 +36,7 @@ export function NexusChat() {
     setLoading(true);
 
     try {
-      const id = await ensureConversation();
+      const id = await ensureConversation(message);
       const response = await fetch("/api/nexus", {
         method: "POST",
         headers: { "content-type": "application/json" },

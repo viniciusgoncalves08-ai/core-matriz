@@ -17,7 +17,10 @@ A primeira fundação já inclui:
 - provider inicial OpenAI;
 - Context Engine inicial com recuperação seletiva;
 - memória estruturada com histórico/versionamento;
-- CRUD de memória com bloqueio e exclusão lógica;
+- CRUD de memória com bloqueio, desbloqueio e exclusão lógica;
+- tela `/memoria` com criação, edição, busca, filtros e últimos registros de versão;
+- histórico `/historico` com até 50 conversas e retomada em URL própria;
+- contexto conversacional com as últimas 30 mensagens anteriores;
 - entidade de agentes e criação automática do agente Nexus;
 - projetos, tarefas, objetivos e organizações no domínio inicial;
 - auditoria básica das execuções do Nexus;
@@ -111,6 +114,10 @@ O workflow `.github/workflows/ci.yml` executa essas verificações em pushes e p
 
 ## Próximas fundações
 
-As próximas implementações devem aprofundar, nesta ordem, a interface de memória, histórico de conversas, Agent Hub, Model Router com fallback, permissões/confirmation requests, auditoria consultável, projetos/tarefas/objetivos e busca global.
+As próximas implementações devem aprofundar, nesta ordem, paginação completa de memória/histórico, Agent Hub, Model Router com fallback, permissões/confirmation requests, auditoria consultável, projetos/tarefas/objetivos e busca global.
 
 Integrações externas não devem exibir sucesso enquanto não houver execução real e credenciais válidas.
+
+## Verificações desta etapa
+
+Testes unitários cobrem continuidade cronológica, recusa de acesso a conversa de outro usuário, preservação de bloqueio na edição e histórico de mudanças de estado. O build não exige banco ativo. Os fluxos reais de cadastro, persistência e resposta da IA precisam de PostgreSQL com schema aplicado e das variáveis de ambiente configuradas; testes unitários usam dependências simuladas.
