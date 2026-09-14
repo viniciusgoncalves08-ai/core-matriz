@@ -7,12 +7,55 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum MemoryClassification { FACT PREFERENCE DECISION HYPOTHESIS OBSERVED_PATTERN CONTEXT KNOWLEDGE RESTRICTION GOAL }
-enum MemoryStatus { ACTIVE SUPERSEDED BLOCKED DELETED }
-enum AgentStatus { ACTIVE PAUSED DISABLED }
-enum ProjectStatus { IDEA PLANNING ACTIVE PAUSED COMPLETED ARCHIVED }
-enum TaskStatus { INBOX TODO IN_PROGRESS BLOCKED COMPLETED CANCELLED }
-enum PermissionLevel { AUTO CONFIRM CRITICAL HIGHLY_SENSITIVE }
+enum MemoryClassification {
+  FACT
+  PREFERENCE
+  DECISION
+  HYPOTHESIS
+  OBSERVED_PATTERN
+  CONTEXT
+  KNOWLEDGE
+  RESTRICTION
+  GOAL
+}
+
+enum MemoryStatus {
+  ACTIVE
+  SUPERSEDED
+  BLOCKED
+  DELETED
+}
+
+enum AgentStatus {
+  ACTIVE
+  PAUSED
+  DISABLED
+}
+
+enum ProjectStatus {
+  IDEA
+  PLANNING
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum TaskStatus {
+  INBOX
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+  CANCELLED
+}
+
+enum PermissionLevel {
+  AUTO
+  CONFIRM
+  CRITICAL
+  HIGHLY_SENSITIVE
+}
 
 model User {
   id String @id @default(cuid())
