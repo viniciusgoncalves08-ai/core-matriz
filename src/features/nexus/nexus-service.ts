@@ -15,6 +15,13 @@ export async function respondAsNexus(params: {
   message: string;
 }) {
   const startedAt = Date.now();
+  const conversation = await db.conversation.findFirst({
+    where: { id: params.conversationId, userId: params.userId },
+    select: { id: true },
+  });
+
+  if (!conversation) throw new Error("Conversa não encontrada ou sem permissão de acesso.");
+
   const context = await buildContext(params.userId, params.message);
 
   await db.message.create({
@@ -41,6 +48,11 @@ export async function respondAsNexus(params: {
         content: result.text,
         metadata: { provider: result.provider, model: result.model },
       },
+    });
+
+    await db.conversation.update({
+      where: { id: params.conversationId },
+      data: { updatedAt: new Date() },
     });
 
     await db.auditLog.create({
