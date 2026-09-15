@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 const navItems = [
   { href: "/", label: "Home" },
-  { href: "/#nexus", label: "Nexus" },
+  { href: "/nexus", label: "Nexus" },
   { href: "/projetos", label: "Projetos" },
   { href: "/tarefas", label: "Tarefas" },
   { href: "/objetivos", label: "Objetivos" },
@@ -16,6 +16,7 @@ const navItems = [
 
 const bottomNavItems = [
   { href: "/", label: "Home" },
+  { href: "/nexus", label: "Nexus" },
   { href: "/projetos", label: "Projetos" },
   { href: "/tarefas", label: "Tarefas" },
   { href: "/agentes", label: "Agentes" },
