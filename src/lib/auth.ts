@@ -3,9 +3,16 @@ import { cookies } from "next/headers";
 
 const COOKIE_NAME = "core_matriz_session";
 
+export class AuthConfigurationError extends Error {}
+
+export function validateAuthConfiguration() {
+  if (!process.env.AUTH_SECRET?.trim()) throw new AuthConfigurationError("AUTH_SECRET não configurado.");
+}
+
 function secret() {
+  validateAuthConfiguration();
   const value = process.env.AUTH_SECRET;
-  if (!value) throw new Error("AUTH_SECRET não configurado.");
+  
   return new TextEncoder().encode(value);
 }
 
