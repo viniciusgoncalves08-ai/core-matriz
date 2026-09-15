@@ -2,10 +2,10 @@ import { AppShell } from "@/components/app-shell";
 import { NexusChat } from "@/features/nexus/nexus-chat";
 
 const modules = [
-  ["Hoje", "Seu foco operacional e próximos compromissos."],
-  ["Memória", "Informações estruturadas que o Nexus pode recuperar."],
-  ["Projetos", "Iniciativas, decisões, tarefas e contexto relacionado."],
-  ["Agentes", "Especialistas coordenados pelo Nexus quando necessário."],
+  ["Tarefas", "Prioridades, prazos e próximos passos.", "/tarefas"],
+  ["Memória", "Informações estruturadas que o Nexus pode recuperar.", "/memoria"],
+  ["Projetos", "Da ideia à execução, com tarefas e progresso.", "/projetos"],
+  ["Agentes", "Especialistas que você configura e escolhe para conversar.", "/agentes"],
 ];
 
 export default function HomePage() {
@@ -16,7 +16,7 @@ export default function HomePage() {
         <div className="actions"><a href="/historico">Ver conversas anteriores</a><a href="/memoria">Gerenciar memórias</a><a href="/agentes">Meus agentes</a><a href="/entrar">Entrar / criar conta</a></div>
         <NexusChat />
       </section>
-      <div className="grid">{modules.map(([title, description]) => <article key={title}><span className="line"/><h3>{title}</h3><p>{description}</p><small>{["Memória", "Agentes"].includes(title) ? "Disponível no menu" : "Em desenvolvimento"}</small></article>)}</div>
+      <div className="grid">{modules.map(([title, description, href]) => <article key={title}><span className="line"/><h3>{title}</h3><p>{description}</p><a className="module-link" href={href}>Abrir {title.toLowerCase()} →</a></article>)}</div>
     </AppShell>
   );
 }
