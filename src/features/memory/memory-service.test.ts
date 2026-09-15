@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const tx = vi.hoisted(() => ({ memory: { findFirst: vi.fn(), update: vi.fn() }, memoryVersion: { create: vi.fn() } }));
+const tx = vi.hoisted(() => ({ memory: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn() }, auditLog: { create: vi.fn() }, memoryVersion: { create: vi.fn() } }));
 vi.mock("@/lib/db", () => ({ db: { $transaction: (fn: (client: typeof tx) => unknown) => fn(tx) } }));
-import { setMemoryStatus, updateMemory } from "./memory-service";
+import { createMemory, setMemoryStatus, updateMemory } from "./memory-service";
 describe("controle das memórias", () => {
   beforeEach(() => vi.clearAllMocks());
   it("preserva o bloqueio ao editar", async () => {
@@ -22,4 +22,15 @@ describe("controle das memórias", () => {
     expect(tx.memoryVersion.create).toHaveBeenCalledWith({ data: expect.objectContaining({ status: "BLOCKED", reason: "Desbloqueada pelo usuário" }) });
     expect(tx.memory.update).toHaveBeenCalledWith({ where: { id: "m1" }, data: { status: "ACTIVE", validUntil: null } });
   });
+});
+
+it("records creation without copying memory contents to audit logs", async () => {
+  tx.memory.create.mockResolvedValue({ id: "m1" });
+  await createMemory({ userId: "u1", content: "Private memory", classification: "FACT" });
+  expect(tx.auditLog.create).toHaveBeenLastCalledWith({ data: { userId: "u1", entityId: "m1", entityType: "memory", action: "MEMORY_CREATED" } });
+});
+it("propagates audit failure so the transaction cannot commit silently", async () => {
+  tx.memory.create.mockResolvedValue({ id: "m1" });
+  tx.auditLog.create.mockRejectedValueOnce(new Error("Audit unavailable"));
+  await expect(createMemory({ userId: "u1", content: "Private memory", classification: "FACT" })).rejects.toThrow("Audit unavailable");
 });

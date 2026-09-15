@@ -14,7 +14,7 @@ Sem Lovable. Provedores de IA são integrações do produto, não desenvolvedore
 | Chat (6–8) | Rota própria, histórico persistente, continuidade, streaming OpenAI/Gemini, Markdown, código, tabelas, estado de erro e interrupção | Anexos, pesquisa de conversas, status de ferramentas e confirmações |
 | Identidade (7) | Nome e instruções editáveis no agente | Configuração central de nome/avatar/voz/proatividade; ainda existem textos Nexus fixos |
 | Memória (9–12) | Classificação, conteúdo, resumo, origem, importância, confiança, bloqueio, edição e versões, exclusão lógica | Relações com entidades, tags na UI, marcar incorreta, validade completa, inferência com evidências, paginação e extração controlada pelo Nexus |
-| Context Engine (13) | Filtros textuais, seleção limitada de memórias/projetos/tarefas e últimas 30 mensagens | Intent Engine, entidades, ranking híbrido, orçamento por tokens, validade temporal, relações e objetivos/arquivos; hoje o tamanho individual dos textos não tem orçamento de contexto |
+| Context Engine (13) | Filtros textuais por usuário, validade temporal da memória, origem/confiança, até 12 mil caracteres serializados de contexto e até 16 mil de histórico recente | Intent Engine, entidades, ranking híbrido, orçamento por tokens exatos, relações e objetivos/arquivos; busca ainda lexical, sem compreensão semântica |
 | Busca / embeddings (14–15) | Busca local nas listas de memória, projeto e tarefa | Busca global no servidor, períodos/entidades, full-text e busca semântica; pgvector ainda não instalado |
 | Agent Hub (16–19) | Criar/editar, pausar/ativar, prompt/modelo/temperatura e conversa individual com identidade persistente | Coordenação automática pelo Nexus, execuções encadeadas, catálogo de ferramentas/permissões e painel de execuções |
 | Providers / Router (20–23) | Interface comum generate/stream/healthCheck; OpenAI/Gemini; fallback técnico explícito, sem misturar streams | Anthropic, embeddings/toolCall, seleção por capacidades/custo e orçamento; nenhuma troca paga automática no fluxo atual |
@@ -22,7 +22,7 @@ Sem Lovable. Provedores de IA são integrações do produto, não desenvolvedore
 | Projetos / tarefas (27–30) | Telas, APIs, vínculo tarefa–projeto, prazos, prioridade, situações, arquivo/restauração de projeto, auditoria | Responsáveis, tags, dependências, relações, histórico visível, criação por intenção e políticas para tarefas implícitas |
 | Objetivos (31) | Modelo Goal no banco | CRUD e tela, métricas, vínculos a projetos/tarefas, histórico e atraso |
 | Eventos / automações / proatividade (32–34) | Sem implementação operacional | Eventos persistidos, processador, regras confirmadas, notificações, cooldown, relevância e histórico |
-| Auditoria (35) | Registros de Nexus, agentes, projetos e tarefas; conclusão do chat em transação | Cobertura completa de memória e permissões, tela de atividade, consulta por Nexus e parâmetros/autorização estruturados |
+| Auditoria (35) | Registros de Nexus, agentes, projetos, tarefas e memória; gravação transacional; tela `/atividade` com filtros e paginação | Permissões, consulta dos registros pelo Nexus e parâmetros/autorização estruturados; registros antigos de memória não foram reconstruídos |
 | Empresas / Vivessence / AutoShow (36–38) | Modelo Organization genérico | CRUD, relações de negócio e adaptadores reais; sem API de estoque/vendas conectada |
 | Calendar / arquivos / links (39–41) | Não implementados | OAuth, storage, validação de upload, processamento, links e permissões de execução |
 | Veículos / finanças / smart home (42–44) | Não implementados | Domínios posteriores; sem alertas ou integração simulada |
@@ -53,3 +53,13 @@ Testes de fragmentação de rede/UTF-8, fim prematuro, cota, fallback antes/depo
 confirmação de persistência, proteção de Markdown e isolamento dos dados no resumo.
 TypeScript, testes e build são gates. Autenticação e páginas publicadas são conferidas
 separadamente da validação de resposta ao vivo de IA.
+
+## Continuidade — contexto e atividade
+
+- Contexto recuperado limitado por caracteres serializados, com reserva para memória, projetos e tarefas; não equivale a contagem exata de tokens. Campos extensos são resumidos por corte e o prompt informa que os dados podem estar incompletos.
+- Histórico enviado à IA limitado a mensagens completas recentes; mensagens originais permanecem no banco. Respostas sem a pergunta correspondente são removidas do trecho recuperado.
+- Mensagens sem termos relevantes não recuperam registros arbitrários. Memórias futuras, vencidas, bloqueadas, substituídas e excluídas não entram na consulta. A busca lexical ainda pode não encontrar sinônimos e perguntas genéricas.
+- Origem, classificação e confiança acompanham as memórias recuperadas. Isso não é uma garantia contra injeção de prompt nem um Permission Engine.
+- Atividade autenticada: filtros por área/resultado, 25 registros por página, datas em Brasília; erros técnicos e metadata bruta não são exibidos.
+- Criação, edição, bloqueio, desbloqueio e exclusão de memória registram auditoria na mesma transação; nenhum conteúdo privado é duplicado no log.
+- Nenhuma nova API paga, serviço ou migration necessária. Integrações externas avaliadas ficam para etapas posteriores.
