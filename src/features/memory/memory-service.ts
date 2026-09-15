@@ -18,24 +18,28 @@ export async function createMemory(input: {
   importance?: number;
   confidence?: number;
 }) {
-  return db.memory.create({
-    data: {
-      userId: input.userId,
-      content: input.content,
-      summary: input.summary,
-      classification: input.classification,
-      source: input.source,
-      importance: input.importance ?? 0.5,
-      confidence: input.confidence ?? 0.7,
-      versions: {
-        create: {
-          content: input.content,
-          summary: input.summary,
-          status: "ACTIVE",
-          reason: "Versão inicial",
+  return db.$transaction(async tx => {
+    const memory = await tx.memory.create({
+      data: {
+        userId: input.userId,
+        content: input.content,
+        summary: input.summary,
+        classification: input.classification,
+        source: input.source,
+        importance: input.importance ?? 0.5,
+        confidence: input.confidence ?? 0.7,
+        versions: {
+          create: {
+            content: input.content,
+            summary: input.summary,
+            status: "ACTIVE",
+            reason: "Versão inicial",
+          },
         },
       },
-    },
+    });
+    await tx.auditLog.create({ data: { userId: input.userId, action: "MEMORY_CREATED", entityType: "memory", entityId: memory.id } });
+    return memory;
   });
 }
 
@@ -60,7 +64,7 @@ export async function updateMemory(input: {
       },
     });
 
-    return tx.memory.update({
+    const updated = await tx.memory.update({
       where: { id: current.id },
       data: {
         content: input.content,
@@ -70,6 +74,8 @@ export async function updateMemory(input: {
         validUntil: null,
       },
     });
+    await tx.auditLog.create({ data: { userId: input.userId, action: "MEMORY_UPDATED", entityType: "memory", entityId: current.id } });
+    return updated;
   });
 }
 
@@ -81,6 +87,8 @@ export async function setMemoryStatus(userId: string, memoryId: string, status: 
       memoryId, content: memory.content, summary: memory.summary, status: memory.status,
       reason: status === "BLOCKED" ? "Bloqueada pelo usuário" : status === "ACTIVE" ? "Desbloqueada pelo usuário" : "Exclusão solicitada pelo usuário",
     } });
-    return tx.memory.update({ where: { id: memoryId }, data: { status, validUntil: status === "DELETED" ? new Date() : null } });
+    const updated = await tx.memory.update({ where: { id: memoryId }, data: { status, validUntil: status === "DELETED" ? new Date() : null } });
+    await tx.auditLog.create({ data: { userId, action: status === "DELETED" ? "MEMORY_DELETED" : status === "BLOCKED" ? "MEMORY_BLOCKED" : "MEMORY_UNBLOCKED", entityType: "memory", entityId: memoryId } });
+    return updated;
   });
 }

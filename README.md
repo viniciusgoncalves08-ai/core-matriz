@@ -188,3 +188,11 @@ substituídas por descrição para não carregar rastreadores. Anexos ainda não
 Referências: https://ai.google.dev/gemini-api/docs/openai,
 https://developers.openai.com/api/docs/guides/streaming-responses e
 https://github.com/remarkjs/react-markdown.
+
+### Atividade e limites de contexto
+
+Em **Histórico → Atividade do Core**, consulte os registros reais de memórias, projetos, tarefas, agentes e respostas. Os filtros e a paginação são aplicados no servidor, por usuário. A tela não reconstrói ações anteriores à implantação da auditoria de memória.
+
+O contexto respeita a validade das memórias e inclui sua origem/confiança. O envio utiliza até 12 mil caracteres serializados de registros e até 16 mil de mensagens anteriores completas, preservando o histórico original no banco. São limites por caracteres, não por tokens. A recuperação ainda é textual e pode não encontrar sinônimos; o Nexus não possui acesso a todos os registros em cada resposta.
+
+Esta entrega utiliza a infraestrutura atual, sem dependências externas novas ou mudança no banco. APIs de IA continuam seguindo a configuração existente.
