@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-export function NexusChat({ initialConversationId = null, initialMessages = [] }: { initialConversationId?: string | null; initialMessages?: ChatMessage[] }) {
+export function NexusChat({ initialConversationId = null, initialMessages = [], agentId, agentName = "Nexus" }: { agentId?: string; agentName?: string; initialConversationId?: string | null; initialMessages?: ChatMessage[] }) {
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
@@ -40,7 +40,7 @@ export function NexusChat({ initialConversationId = null, initialMessages = [] }
       const response = await fetch("/api/nexus", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ conversationId: id, message }),
+        body: JSON.stringify({ conversationId: id, message, agentId }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Falha ao consultar o Nexus.");
@@ -58,7 +58,7 @@ export function NexusChat({ initialConversationId = null, initialMessages = [] }
         <div className="chat-messages">
           {messages.map((message, index) => (
             <div className={`chat-message ${message.role}`} key={`${message.role}-${index}`}>
-              <strong>{message.role === "user" ? "Você" : "Nexus"}</strong>
+              <strong>{message.role === "user" ? "Você" : agentName}</strong>
               <p>{message.content}</p>
             </div>
           ))}
@@ -67,8 +67,8 @@ export function NexusChat({ initialConversationId = null, initialMessages = [] }
       {error && <p className="chat-error">{error}</p>}
       <form className="composer" onSubmit={submit}>
         <textarea
-          aria-label="Mensagem para o Nexus"
-          placeholder="Fale com o Nexus..."
+          aria-label={`Mensagem para ${agentName}`}
+          placeholder={`Fale com ${agentName}...`}
           value={input}
           onChange={(event) => setInput(event.target.value)}
           disabled={loading}

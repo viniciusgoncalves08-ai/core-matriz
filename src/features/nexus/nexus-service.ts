@@ -2,6 +2,8 @@ import { modelRouter } from "@/ai/model-router";
 import { buildContext, serializeContext } from "@/features/context/context-engine";
 import { db } from "@/lib/db";
 
+export class AgentUnavailableError extends Error {}
+
 const NEXUS_SYSTEM_PROMPT = `Você é o Nexus, interface central do Core Matriz.
 Seja direto, analítico, profissional, crítico e honesto.
 Não invente ações executadas. Quando houver incerteza, declare-a.
@@ -11,6 +13,7 @@ export async function respondAsNexus(params: {
   userId: string;
   conversationId: string;
   message: string;
+  agentId?: string;
 }) {
   const startedAt = Date.now();
   const conversation = await db.conversation.findFirst({
@@ -19,6 +22,12 @@ export async function respondAsNexus(params: {
   });
 
   if (!conversation) throw new Error("Conversa não encontrada ou sem permissão de acesso.");
+
+  const agent = await db.agent.findFirst({
+    where: params.agentId ? { id: params.agentId, userId: params.userId } : { slug: "nexus", userId: params.userId },
+  });
+  if (params.agentId && !agent) throw new AgentUnavailableError("Agente não encontrado.");
+  if (agent && agent.status !== "ACTIVE") throw new AgentUnavailableError("Este agente está pausado ou desativado. Ative-o em Agentes para conversar.");
 
   const recentMessages = await db.message.findMany({
     where: { conversationId: conversation.id, role: { in: ["user", "assistant"] } },
@@ -37,6 +46,7 @@ export async function respondAsNexus(params: {
       conversationId: params.conversationId,
       role: "user",
       content: params.message,
+      metadata: agent ? { agentId: agent.id, agentName: agent.name } : undefined,
     },
   });
 
@@ -44,17 +54,17 @@ export async function respondAsNexus(params: {
     const result = await modelRouter.generate(
       {
         messages: [
-          { role: "system", content: NEXUS_SYSTEM_PROMPT },
+          { role: "system", content: agent ? `Você é ${agent.name}. Especialidade: ${agent.role}.\n${agent.systemPrompt}\nNão invente ações executadas. Declare incertezas e use apenas contexto relevante.` : NEXUS_SYSTEM_PROMPT },
           { role: "system", content: `Contexto recuperado:\n${serializeContext(context)}` },
           ...history,
           { role: "user", content: params.message },
         ],
-        temperature: 0.2,
+        temperature: agent?.temperature ?? 0.2,
       },
       [
         {
           provider: process.env.AI_DEFAULT_PROVIDER ?? "openai",
-          model: process.env.AI_DEFAULT_MODEL ?? "gpt-5",
+          model: agent?.preferredModel || process.env.AI_DEFAULT_MODEL || "gpt-5",
         },
       ],
     );
@@ -64,7 +74,7 @@ export async function respondAsNexus(params: {
         conversationId: params.conversationId,
         role: "assistant",
         content: result.text,
-        metadata: { provider: result.provider, model: result.model },
+        metadata: { provider: result.provider, model: result.model, ...(agent ? { agentId: agent.id, agentName: agent.name } : {}) },
       },
     });
 
@@ -77,6 +87,7 @@ export async function respondAsNexus(params: {
       data: {
         userId: params.userId,
         action: "NEXUS_RESPONSE_GENERATED",
+        agentId: agent?.id,
         entityType: "conversation",
         entityId: params.conversationId,
         model: result.model,
@@ -91,6 +102,7 @@ export async function respondAsNexus(params: {
       data: {
         userId: params.userId,
         action: "NEXUS_RESPONSE_FAILED",
+        agentId: agent?.id,
         entityType: "conversation",
         entityId: params.conversationId,
         success: false,
