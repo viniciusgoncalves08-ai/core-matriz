@@ -1,3 +1,4 @@
+import { streamChat } from "./chat-stream";
 import type { AIProvider, GenerateInput, GenerateResult } from "./provider";
 import { AIError } from "./ai-error";
 
@@ -8,6 +9,10 @@ export function supportsTemperature(model: string) {
 export class OpenAIProvider implements AIProvider {
   readonly name = "openai";
   async healthCheck(): Promise<boolean> { return Boolean(process.env.OPENAI_API_KEY?.trim()); }
+  async stream(input: GenerateInput, onDelta: (text: string) => void): Promise<GenerateResult> {
+    const model = input.model?.trim() || process.env.AI_DEFAULT_MODEL?.trim() || "gpt-5";
+    return streamChat(input, onDelta, { endpoint: "https://api.openai.com/v1/chat/completions", apiKey: process.env.OPENAI_API_KEY, model, provider: this.name, options: supportsTemperature(model) ? { temperature: input.temperature ?? 0.2 } : {} });
+  }
   async generate(input: GenerateInput): Promise<GenerateResult> {
     const apiKey = process.env.OPENAI_API_KEY?.trim();
     if (!apiKey) throw new AIError("AI_NOT_CONFIGURED");

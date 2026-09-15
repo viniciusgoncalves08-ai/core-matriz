@@ -1,3 +1,4 @@
+import { streamChat } from "./chat-stream";
 import type { AIProvider, GenerateInput, GenerateResult } from "./provider";
 import { AIError } from "./ai-error";
 import { GEMINI_DEFAULT_MODEL } from "./model-target";
@@ -5,6 +6,10 @@ import { GEMINI_DEFAULT_MODEL } from "./model-target";
 export class GeminiProvider implements AIProvider {
   readonly name = "gemini";
   async healthCheck(): Promise<boolean> { return Boolean(process.env.GEMINI_API_KEY?.trim()); }
+  async stream(input: GenerateInput, onDelta: (text: string) => void): Promise<GenerateResult> {
+    const model = input.model?.trim() || GEMINI_DEFAULT_MODEL;
+    return streamChat(input, onDelta, { endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", apiKey: process.env.GEMINI_API_KEY, model, provider: this.name, options: { temperature: input.temperature ?? 0.2, max_tokens: 2048 } });
+  }
   async generate(input: GenerateInput): Promise<GenerateResult> {
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) throw new AIError("AI_NOT_CONFIGURED");
