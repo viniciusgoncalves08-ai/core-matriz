@@ -138,3 +138,24 @@ O Agent Hub está em `/agentes`. Agentes pausados não respondem; o acesso é re
 `OPENAI_API_KEY` precisa conter uma chave válida da API. Variáveis `AI_DEFAULT_PROVIDER` e `AI_DEFAULT_MODEL` vazias usam `openai` e `gpt-5`. O provider tem timeout de 45 segundos e não aceita respostas vazias como sucesso. Erros retornam códigos estáveis sem copiar o payload do provedor para o usuário.
 
 A integração omite temperatura nos modelos de raciocínio. Compatibilidade do GPT-5: https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.2 (seção de compatibilidade também cobre o GPT-5 original).
+
+
+### Gemini com cota gratuita
+
+Crie uma chave em https://aistudio.google.com/apikey usando um projeto no Free tier.
+Configure no servidor/Vercel (Production e Preview): `GEMINI_API_KEY` com a chave,
+`AI_DEFAULT_PROVIDER=gemini` e `AI_DEFAULT_MODEL=gemini-2.5-flash-lite`; publique
+novamente para aplicar as variáveis. Não use prefixo NEXT_PUBLIC nem envie a chave ao navegador.
+O cadastro de novos agentes Nexus herda o modelo do aplicativo. Ao mudar de provedor,
+modelos salvos do outro provedor usam o padrão compatível, sem alterar o registro do agente.
+
+A faixa gratuita depende do modelo e do projeto; consulte os limites ativos no AI Studio.
+Mantenha o projeto no Free tier para usar sem cobrança. O aplicativo não controla o plano
+de faturamento do Google. Ao esgotar a cota, exibe um aviso e não tenta OpenAI nem repete
+a chamada automaticamente. As respostas são limitadas a 2048 tokens.
+No plano gratuito, o Google pode usar conteúdo para melhorar seus produtos; evite dados
+sensíveis nas conversas e memórias usadas nesse período de testes.
+
+Documentação: https://ai.google.dev/gemini-api/docs/pricing,
+https://ai.google.dev/gemini-api/docs/rate-limits e
+https://ai.google.dev/gemini-api/docs/openai.

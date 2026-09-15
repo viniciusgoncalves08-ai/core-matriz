@@ -1,5 +1,6 @@
 import { AIError } from "./ai-error";
 import type { AIProvider, GenerateInput, GenerateResult } from "./provider";
+import { GeminiProvider } from "./gemini-provider";
 import { OpenAIProvider } from "./openai-provider";
 
 export type ModelTarget = {
@@ -10,7 +11,7 @@ export type ModelTarget = {
 export class ModelRouter {
   private readonly providers = new Map<string, AIProvider>();
 
-  constructor(initialProviders: AIProvider[] = [new OpenAIProvider()]) {
+  constructor(initialProviders: AIProvider[] = [new OpenAIProvider(), new GeminiProvider()]) {
     for (const provider of initialProviders) this.providers.set(provider.name, provider);
   }
 

@@ -31,7 +31,7 @@ export async function POST(request: Request) {
             slug: "nexus",
             role: "Orquestrador central do Core Matriz",
             systemPrompt: "Seja direto, analítico, crítico, profissional e honesto. Nunca represente ação não executada como concluída.",
-            preferredModel: process.env.AI_DEFAULT_MODEL ?? "gpt-5",
+            preferredModel: null,
           },
         },
       },
