@@ -19,7 +19,7 @@ export function ConversationHistory() {
   useEffect(() => { void load(); }, []);
   const visible = items.filter(item => (item.title ?? "Nova conversa").toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR")));
   return <div className="workspace-stack">
-    <div className="actions"><Link className="button-link" href="/#nexus">Nova conversa</Link><span className="muted">Até 50 conversas mais recentes</span></div>
+    <div className="actions"><Link className="button-link" href="/nexus">Nova conversa</Link><span className="muted">Até 50 conversas mais recentes</span></div>
     <label className="workspace-form">Buscar por título<input type="search" value={query} onChange={e => setQuery(e.target.value)} /></label>
     {loading && <p role="status">Carregando conversas…</p>}
     {error && <p className="chat-error" role="alert">{error} <a href="/entrar">Entrar</a> <button onClick={() => void load()}>Tentar novamente</button></p>}

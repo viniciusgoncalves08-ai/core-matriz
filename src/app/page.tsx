@@ -1,5 +1,4 @@
 import { AppShell } from "@/components/app-shell";
-import { NexusChat } from "@/features/nexus/nexus-chat";
 
 const modules = [
   ["Tarefas", "Prioridades, prazos e próximos passos.", "/tarefas"],
@@ -10,12 +9,7 @@ const modules = [
 
 export default function HomePage() {
   return (
-    <AppShell active="Home" title="Seu espaço, conectado." description="Organize contexto, decisões e execução com o Nexus.">
-      <section className="nexus-card" id="nexus">
-        <div className="orb">N</div><div className="nexus-copy"><span>NEXUS</span><h2>O que precisa da sua atenção agora?</h2><p>Converse naturalmente. Suas memórias relevantes ajudam a orientar cada resposta.</p></div>
-        <div className="actions"><a href="/historico">Ver conversas anteriores</a><a href="/memoria">Gerenciar memórias</a><a href="/agentes">Meus agentes</a><a href="/entrar">Entrar / criar conta</a></div>
-        <NexusChat />
-      </section>
+    <AppShell active="Home" title="Seu espaço, conectado." description="Acompanhe seus projetos, tarefas, memórias e agentes.">
       <div className="grid">{modules.map(([title, description, href]) => <article key={title}><span className="line"/><h3>{title}</h3><p>{description}</p><a className="module-link" href={href}>Abrir {title.toLowerCase()} →</a></article>)}</div>
     </AppShell>
   );
