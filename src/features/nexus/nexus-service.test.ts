@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ findAgent: vi.fn(), findConversation: vi.fn(), history: vi.fn(), createMessage: vi.fn(), generate: vi.fn() }));
-vi.mock("@/lib/db", () => ({ db: { agent: { findFirst: mocks.findAgent }, conversation: { findFirst: mocks.findConversation, update: vi.fn() }, message: { findMany: mocks.history, create: mocks.createMessage }, auditLog: { create: vi.fn() } } }));
+const mocks = vi.hoisted(() => ({ findAgent: vi.fn(), findConversation: vi.fn(), history: vi.fn(), createMessage: vi.fn(), generate: vi.fn(), stream: vi.fn() }));
+vi.mock("@/lib/db", () => ({ db: { $transaction: async (action: (tx: unknown) => unknown) => action({ message: { create: mocks.createMessage }, conversation: { update: vi.fn() }, auditLog: { create: vi.fn() } }), agent: { findFirst: mocks.findAgent }, conversation: { findFirst: mocks.findConversation, update: vi.fn() }, message: { findMany: mocks.history, create: mocks.createMessage }, auditLog: { create: vi.fn() } } }));
 vi.mock("@/features/context/context-engine", () => ({ buildContext: vi.fn().mockResolvedValue({}), serializeContext: () => "" }));
-vi.mock("@/ai/model-router", () => ({ modelRouter: { generate: mocks.generate } }));
+vi.mock("@/ai/model-router", () => ({ modelRouter: { generate: mocks.generate, stream: mocks.stream } }));
 import { respondAsNexus } from "./nexus-service";
 describe("continuidade do Nexus", () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.findAgent.mockResolvedValue(null); mocks.generate.mockResolvedValue({ text: "Resposta", model: "test", provider: "test" }); });
@@ -61,4 +61,23 @@ it("uses OpenAI when provider environment variable is blank", async () => {
   mocks.generate.mockResolvedValue({ text: "OK", provider: "openai", model: "gpt-5" });
   await respondAsNexus({ userId: "u1", conversationId: "c1", message: "Olá" });
   expect(mocks.generate.mock.calls.at(-1)![1]).toEqual([{ provider: "openai", model: "gpt-5" }]);
+});
+
+it("persists a streaming answer only after the model completes", async () => {
+  mocks.findConversation.mockResolvedValue({ id: "c1" }); mocks.findAgent.mockResolvedValue(null); mocks.history.mockResolvedValue([]); mocks.createMessage.mockClear();
+  const emit = vi.fn();
+  mocks.stream.mockImplementationOnce(async (_input, _targets, onDelta) => {
+    onDelta("Olá");
+    expect(mocks.createMessage.mock.calls.filter(([args]) => args.data.role === "assistant")).toHaveLength(0);
+    return { text: "Olá", provider: "gemini", model: "test" };
+  });
+  await respondAsNexus({ userId: "u1", conversationId: "c1", message: "Oi", onDelta: emit });
+  expect(emit).toHaveBeenCalledWith("Olá");
+  expect(mocks.createMessage).toHaveBeenLastCalledWith({ data: expect.objectContaining({ role: "assistant", content: "Olá" }) });
+});
+it("does not persist a partial assistant response when the stream fails", async () => {
+  mocks.findConversation.mockResolvedValue({ id: "c1" }); mocks.findAgent.mockResolvedValue(null); mocks.history.mockResolvedValue([]); mocks.createMessage.mockClear();
+  mocks.stream.mockImplementationOnce(async (_input, _targets, onDelta) => { onDelta("Parcial"); throw new Error("disconnect"); });
+  await expect(respondAsNexus({ userId: "u1", conversationId: "c1", message: "Oi", onDelta: vi.fn() })).rejects.toThrow();
+  expect(mocks.createMessage.mock.calls.filter(([args]) => args.data.role === "assistant")).toHaveLength(0);
 });

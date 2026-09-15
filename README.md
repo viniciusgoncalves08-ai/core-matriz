@@ -2,6 +2,8 @@
 
 Core Matriz é a fundação de um sistema operacional pessoal inteligente. O Nexus é a interface central e coordena contexto, memória, modelos, agentes e ações sem exigir que o usuário administre manualmente essa cadeia.
 
+O acompanhamento verificável da especificação está em [docs/PRODUCT_STATUS.md](docs/PRODUCT_STATUS.md). A fundação está em evolução: agentes ainda não executam ferramentas ou ações autônomas.
+
 ## Estado atual
 
 A primeira fundação já inclui:
@@ -12,9 +14,11 @@ A primeira fundação já inclui:
 - autenticação por e-mail/senha com hash bcrypt;
 - sessão HTTP-only assinada;
 - conversas e mensagens persistentes;
-- interface funcional de chat do Nexus;
+- chat separado em `/nexus`, com streaming real, Markdown, código, tabelas e interrupção;
+- confirmação de resposta completa somente após persistência transacional e auditoria;
+- Home autenticada com contagens reais, prazos e projetos recentes;
 - provider de IA desacoplado por interface;
-- provider inicial OpenAI;
+- providers OpenAI e Gemini, com geração e streaming;
 - Context Engine inicial com recuperação seletiva;
 - memória estruturada com histórico/versionamento;
 - CRUD de memória com bloqueio, desbloqueio e exclusão lógica;
@@ -25,7 +29,8 @@ A primeira fundação já inclui:
 - conversas com o agente escolhido e retomada preservando sua identidade;
 - instruções, modelo e temperatura do agente aplicados à geração;
 - auditoria de criação, edição e execução de agentes;
-- projetos, tarefas, objetivos e organizações no domínio inicial;
+- projetos e tarefas com telas e operações autenticadas;
+- objetivos e organizações apenas no schema, ainda sem interfaces;
 - auditoria básica das execuções do Nexus;
 - teste unitário do Context Engine;
 - CI para geração Prisma, testes, typecheck e build.
@@ -52,7 +57,7 @@ npm run db:migrate
 npm run dev
 ```
 
-Variáveis obrigatórias:
+Banco e autenticação são necessários para dados pessoais. A chave de IA só é necessária para as respostas do chat; use a do provedor selecionado:
 
 ```env
 DATABASE_URL="postgresql://..."
@@ -101,7 +106,10 @@ prisma/
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
 - `GET|POST /api/conversations`
-- `POST /api/nexus`
+- `POST /api/nexus` (JSON ou NDJSON com `stream: true`)
+- `GET|POST /api/projects` e `PATCH /api/projects/:id`
+- `GET|POST /api/tasks` e `PATCH /api/tasks/:id`
+- `GET|POST /api/agents` e `PATCH /api/agents/:id`
 - `GET|POST /api/memories`
 - `PATCH|DELETE /api/memories/:id`
 
@@ -117,7 +125,7 @@ O workflow `.github/workflows/ci.yml` executa essas verificações em pushes e p
 
 ## Próximas fundações
 
-As próximas implementações devem aprofundar, nesta ordem, paginação completa de memória/histórico, coordenação automática de agentes, Model Router com fallback, permissões/confirmation requests, auditoria consultável, projetos/tarefas/objetivos e busca global.
+A próxima prioridade é aprofundar o Context Engine, relações de memória, recuperação de conta e proteção contra abuso; depois criar permissões/ferramentas e auditoria consultável. Objetivos e busca global completam a organização. Consulte a matriz de estado antes de considerar uma fase concluída.
 
 Integrações externas não devem exibir sucesso enquanto não houver execução real e credenciais válidas.
 
@@ -159,3 +167,24 @@ sensíveis nas conversas e memórias usadas nesse período de testes.
 Documentação: https://ai.google.dev/gemini-api/docs/pricing,
 https://ai.google.dev/gemini-api/docs/rate-limits e
 https://ai.google.dev/gemini-api/docs/openai.
+
+
+## Protocolo de streaming
+
+`POST /api/nexus` aceita `stream: true`. O cliente recebe linhas JSON: `delta` com
+texto do provedor, `done` com a mensagem persistida ou `error` com mensagem segura.
+A autenticação e a validação de entrada ocorrem antes de abrir a resposta; falhas
+posteriores são eventos de erro. O cliente não interpreta HTTP 200 como sucesso final.
+Cancelamento usa AbortSignal; respostas parciais não são persistidas como respostas
+completas. A mensagem do usuário permanece no histórico. Se a conexão cair depois da
+confirmação no banco mas antes de chegar ao navegador, o histórico é a fonte oficial.
+Não há repetição automática da mensagem. Fallback só pode ocorrer antes do primeiro
+trecho e apenas para destinos explicitamente configurados; o Nexus usa um único destino.
+Timeout do provedor: 45 segundos. Limite da rota: 60 segundos.
+
+Markdown usa react-markdown e remark-gfm, sem HTML bruto; imagens remotas são
+substituídas por descrição para não carregar rastreadores. Anexos ainda não existem.
+
+Referências: https://ai.google.dev/gemini-api/docs/openai,
+https://developers.openai.com/api/docs/guides/streaming-responses e
+https://github.com/remarkjs/react-markdown.

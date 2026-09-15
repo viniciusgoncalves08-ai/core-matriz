@@ -1,3 +1,4 @@
+import { AIError } from "@/ai/ai-error";
 import { getModelTarget } from "@/ai/model-target";
 import { modelRouter } from "@/ai/model-router";
 import { buildContext, serializeContext } from "@/features/context/context-engine";
@@ -15,6 +16,8 @@ export async function respondAsNexus(params: {
   conversationId: string;
   message: string;
   agentId?: string;
+  onDelta?: (text: string) => void;
+  signal?: AbortSignal;
 }) {
   const startedAt = Date.now();
   const conversation = await db.conversation.findFirst({
@@ -52,7 +55,10 @@ export async function respondAsNexus(params: {
   });
 
   try {
-    const result = await modelRouter.generate(
+    const generate = params.onDelta
+      ? (input: Parameters<typeof modelRouter.generate>[0], targets: Parameters<typeof modelRouter.generate>[1]) => modelRouter.stream({ ...input, signal: params.signal }, targets, params.onDelta!)
+      : modelRouter.generate.bind(modelRouter);
+    const result = await generate(
       {
         messages: [
           { role: "system", content: agent ? `Você é ${agent.name}. Especialidade: ${agent.role}.\n${agent.systemPrompt}\nNão invente ações executadas. Declare incertezas e use apenas contexto relevante.` : NEXUS_SYSTEM_PROMPT },
@@ -65,33 +71,37 @@ export async function respondAsNexus(params: {
       [getModelTarget(agent?.preferredModel)],
     );
 
-    const assistantMessage = await db.message.create({
-      data: {
-        conversationId: params.conversationId,
-        role: "assistant",
-        content: result.text,
-        metadata: { provider: result.provider, model: result.model, ...(agent ? { agentId: agent.id, agentName: agent.name } : {}) },
-      },
-    });
+    if (params.signal?.aborted) throw new AIError("AI_CANCELLED");
+    const assistantMessage = await db.$transaction(async tx => {
+      const savedMessage = await tx.message.create({
+        data: {
+          conversationId: params.conversationId,
+          role: "assistant",
+          content: result.text,
+          metadata: { provider: result.provider, model: result.model, ...(agent ? { agentId: agent.id, agentName: agent.name } : {}) },
+        },
+      });
 
-    await db.conversation.update({
-      where: { id: params.conversationId },
-      data: { updatedAt: new Date() },
-    });
+      await tx.conversation.update({
+        where: { id: params.conversationId },
+        data: { updatedAt: new Date() },
+      });
 
-    await db.auditLog.create({
-      data: {
-        userId: params.userId,
-        action: "NEXUS_RESPONSE_GENERATED",
-        agentId: agent?.id,
-        entityType: "conversation",
-        entityId: params.conversationId,
-        model: result.model,
-        success: true,
-        durationMs: Date.now() - startedAt,
-      },
-    });
+      await tx.auditLog.create({
+        data: {
+          userId: params.userId,
+          action: "NEXUS_RESPONSE_GENERATED",
+          agentId: agent?.id,
+          entityType: "conversation",
+          entityId: params.conversationId,
+          model: result.model,
+          success: true,
+          durationMs: Date.now() - startedAt,
+        },
+      });
 
+      return savedMessage;
+    });
     return { message: assistantMessage, context };
   } catch (error) {
     await db.auditLog.create({
@@ -103,7 +113,7 @@ export async function respondAsNexus(params: {
         entityId: params.conversationId,
         success: false,
         durationMs: Date.now() - startedAt,
-        error: error instanceof Error ? error.message : "Erro desconhecido",
+        error: error instanceof AIError ? error.message : "Falha interna ao gerar ou salvar a resposta.",
       },
     });
     throw error;
