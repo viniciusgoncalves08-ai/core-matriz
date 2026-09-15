@@ -1,3 +1,4 @@
+import { getModelTarget } from "@/ai/model-target";
 import { modelRouter } from "@/ai/model-router";
 import { buildContext, serializeContext } from "@/features/context/context-engine";
 import { db } from "@/lib/db";
@@ -61,12 +62,7 @@ export async function respondAsNexus(params: {
         ],
         temperature: agent?.temperature ?? 0.2,
       },
-      [
-        {
-          provider: process.env.AI_DEFAULT_PROVIDER?.trim() || "openai",
-          model: agent?.preferredModel?.trim() || process.env.AI_DEFAULT_MODEL?.trim() || "gpt-5",
-        },
-      ],
+      [getModelTarget(agent?.preferredModel)],
     );
 
     const assistantMessage = await db.message.create({
