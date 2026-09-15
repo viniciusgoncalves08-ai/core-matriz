@@ -21,7 +21,10 @@ A primeira fundação já inclui:
 - tela `/memoria` com criação, edição, busca, filtros e últimos registros de versão;
 - histórico `/historico` com até 50 conversas e retomada em URL própria;
 - contexto conversacional com as últimas 30 mensagens anteriores;
-- entidade de agentes e criação automática do agente Nexus;
+- Agent Hub com criação, edição, pausa e ativação de agentes;
+- conversas com o agente escolhido e retomada preservando sua identidade;
+- instruções, modelo e temperatura do agente aplicados à geração;
+- auditoria de criação, edição e execução de agentes;
 - projetos, tarefas, objetivos e organizações no domínio inicial;
 - auditoria básica das execuções do Nexus;
 - teste unitário do Context Engine;
@@ -114,7 +117,7 @@ O workflow `.github/workflows/ci.yml` executa essas verificações em pushes e p
 
 ## Próximas fundações
 
-As próximas implementações devem aprofundar, nesta ordem, paginação completa de memória/histórico, Agent Hub, Model Router com fallback, permissões/confirmation requests, auditoria consultável, projetos/tarefas/objetivos e busca global.
+As próximas implementações devem aprofundar, nesta ordem, paginação completa de memória/histórico, coordenação automática de agentes, Model Router com fallback, permissões/confirmation requests, auditoria consultável, projetos/tarefas/objetivos e busca global.
 
 Integrações externas não devem exibir sucesso enquanto não houver execução real e credenciais válidas.
 
@@ -127,3 +130,5 @@ Testes unitários cobrem continuidade cronológica, recusa de acesso a conversa 
 A publicação de produção gera o Prisma Client, compila o app e aplica as migrations versionadas com `prisma migrate deploy`. Se a migração falhar, a nova publicação é interrompida. A conexão usa `DATABASE_URL_UNPOOLED` do Neon quando disponível, com fallback para `DATABASE_URL`. Previews não migram o banco compartilhado.
 
 A migration inicial cria o schema em um banco vazio. Bancos já existentes sem histórico de migrations exigem avaliação e baseline; o processo não apaga ou reinicializa dados. O CI valida a criação em PostgreSQL, a segunda execução e a correspondência com o schema.
+
+O Agent Hub está em `/agentes`. Agentes pausados não respondem; o acesso é restrito ao dono. Nesta etapa a seleção é manual e não há ferramentas externas executadas pelos agentes. A execução real depende das credenciais da IA.
