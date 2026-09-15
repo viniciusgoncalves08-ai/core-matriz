@@ -23,6 +23,8 @@ export async function buildContext(userId: string, message: string): Promise<Nex
 
   if (!terms.length) return { memories: [], projects: [], tasks: [] };
   const now = new Date();
+  const projectTerms = terms.filter(term => !["projeto", "projetos"].includes(term));
+  const taskTerms = terms.filter(term => !["tarefa", "tarefas"].includes(term));
   const textFilters = terms.flatMap((term) => [
     { content: { contains: term, mode: "insensitive" as const } },
     { summary: { contains: term, mode: "insensitive" as const } },
@@ -45,8 +47,8 @@ export async function buildContext(userId: string, message: string): Promise<Nex
       where: {
         userId,
         status: { in: ["IDEA", "PLANNING", "ACTIVE", "PAUSED"] },
-        ...(terms.length
-          ? { OR: terms.flatMap((term) => [{ name: { contains: term, mode: "insensitive" as const } }, { description: { contains: term, mode: "insensitive" as const } }]) }
+        ...(projectTerms.length
+          ? { OR: projectTerms.flatMap((term) => [{ name: { contains: term, mode: "insensitive" as const } }, { description: { contains: term, mode: "insensitive" as const } }]) }
           : {}),
       },
       orderBy: { updatedAt: "desc" },
@@ -54,7 +56,7 @@ export async function buildContext(userId: string, message: string): Promise<Nex
       select: { id: true, name: true, description: true, status: true },
     }),
     db.task.findMany({
-      where: { userId, status: { in: ["INBOX", "TODO", "IN_PROGRESS", "BLOCKED"] }, OR: terms.map(term => ({ title: { contains: term, mode: "insensitive" as const } })) },
+      where: { userId, status: { in: ["INBOX", "TODO", "IN_PROGRESS", "BLOCKED"] }, ...(taskTerms.length ? { OR: taskTerms.map(term => ({ title: { contains: term, mode: "insensitive" as const } })) } : {}) },
       orderBy: [{ priority: "desc" }, { dueAt: "asc" }],
       take: 8,
       select: { id: true, title: true, status: true, dueAt: true },

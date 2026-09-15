@@ -39,3 +39,10 @@ it("bounds escaped context while reserving space for every domain", () => {
   expect(parsed.memories[0]).toMatchObject({ classification: "HYPOTHESIS", source: "Usuário", confidence: 0.4 });
   expect(parsed.projects).toHaveLength(1); expect(parsed.tasks).toHaveLength(1);
 });
+
+it("supports explicit requests to list projects and tasks without requiring those words in titles", async () => {
+  await buildContext("u1", "Minhas tarefas");
+  expect(queries.task.findMany.mock.calls[0][0].where.OR).toBeUndefined();
+  await buildContext("u1", "Meus projetos");
+  expect(queries.project.findMany.mock.calls[1][0].where.OR).toBeUndefined();
+});
