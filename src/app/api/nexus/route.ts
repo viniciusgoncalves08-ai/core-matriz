@@ -1,3 +1,4 @@
+import { AIError } from "@/ai/ai-error";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { AgentUnavailableError, respondAsNexus } from "@/features/nexus/nexus-service";
@@ -18,13 +19,14 @@ export async function POST(request: Request) {
     const result = await respondAsNexus({ ...body, userId });
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof AIError) return NextResponse.json({ error: error.message, code: error.code }, { status: 503 });
     if (error instanceof AgentUnavailableError) return NextResponse.json({ error: error.message }, { status: 409 });
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Dados inválidos", details: error.flatten() }, { status: 400 });
     }
 
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erro interno" },
+      { error: "Não foi possível concluir a conversa. Tente novamente." },
       { status: 500 },
     );
   }

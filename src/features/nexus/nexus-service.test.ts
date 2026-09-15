@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ findAgent: vi.fn(), findConversation: vi.fn(), history: vi.fn(), createMessage: vi.fn(), generate: vi.fn() }));
 vi.mock("@/lib/db", () => ({ db: { agent: { findFirst: mocks.findAgent }, conversation: { findFirst: mocks.findConversation, update: vi.fn() }, message: { findMany: mocks.history, create: mocks.createMessage }, auditLog: { create: vi.fn() } } }));
 vi.mock("@/features/context/context-engine", () => ({ buildContext: vi.fn().mockResolvedValue({}), serializeContext: () => "" }));
@@ -49,4 +49,16 @@ it("applies the selected agent configuration and persists identity", async () =>
   expect(input.temperature).toBe(0.4);
   expect(targets[0].model).toBe("test-model");
   expect(mocks.createMessage).toHaveBeenLastCalledWith({ data: expect.objectContaining({ metadata: expect.objectContaining({ agentId: "a1", agentName: "Planejador" }) }) });
+});
+
+afterEach(() => vi.unstubAllEnvs());
+it("uses OpenAI when provider environment variable is blank", async () => {
+  vi.stubEnv("AI_DEFAULT_PROVIDER", "  ");
+  vi.stubEnv("AI_DEFAULT_MODEL", "");
+  mocks.findConversation.mockResolvedValue({ id: "c1" });
+  mocks.findAgent.mockResolvedValue(null);
+  mocks.history.mockResolvedValue([]);
+  mocks.generate.mockResolvedValue({ text: "OK", provider: "openai", model: "gpt-5" });
+  await respondAsNexus({ userId: "u1", conversationId: "c1", message: "Olá" });
+  expect(mocks.generate.mock.calls.at(-1)![1]).toEqual([{ provider: "openai", model: "gpt-5" }]);
 });

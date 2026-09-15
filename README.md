@@ -132,3 +132,9 @@ A publicação de produção gera o Prisma Client, compila o app e aplica as mig
 A migration inicial cria o schema em um banco vazio. Bancos já existentes sem histórico de migrations exigem avaliação e baseline; o processo não apaga ou reinicializa dados. O CI valida a criação em PostgreSQL, a segunda execução e a correspondência com o schema.
 
 O Agent Hub está em `/agentes`. Agentes pausados não respondem; o acesso é restrito ao dono. Nesta etapa a seleção é manual e não há ferramentas externas executadas pelos agentes. A execução real depende das credenciais da IA.
+
+## Conexão da IA
+
+`OPENAI_API_KEY` precisa conter uma chave válida da API. Variáveis `AI_DEFAULT_PROVIDER` e `AI_DEFAULT_MODEL` vazias usam `openai` e `gpt-5`. O provider tem timeout de 45 segundos e não aceita respostas vazias como sucesso. Erros retornam códigos estáveis sem copiar o payload do provedor para o usuário.
+
+A integração omite temperatura nos modelos de raciocínio. Compatibilidade do GPT-5: https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.2 (seção de compatibilidade também cobre o GPT-5 original).

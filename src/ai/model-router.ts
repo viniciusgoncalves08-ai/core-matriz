@@ -1,3 +1,4 @@
+import { AIError } from "./ai-error";
 import type { AIProvider, GenerateInput, GenerateResult } from "./provider";
 import { OpenAIProvider } from "./openai-provider";
 
@@ -18,27 +19,27 @@ export class ModelRouter {
   }
 
   async generate(input: Omit<GenerateInput, "model">, targets: ModelTarget[]): Promise<GenerateResult> {
-    const errors: string[] = [];
+    let lastError = new AIError("AI_NOT_CONFIGURED");
 
     for (const target of targets) {
       const provider = this.providers.get(target.provider);
       if (!provider) {
-        errors.push(`${target.provider}: provider não registrado`);
+        lastError = new AIError("AI_NOT_CONFIGURED");
         continue;
       }
 
       try {
         if (!(await provider.healthCheck())) {
-          errors.push(`${target.provider}: indisponível`);
+          lastError = new AIError("AI_NOT_CONFIGURED");
           continue;
         }
         return await provider.generate({ ...input, model: target.model });
       } catch (error) {
-        errors.push(`${target.provider}: ${error instanceof Error ? error.message : "erro desconhecido"}`);
+        lastError = error instanceof AIError ? error : new AIError("AI_PROVIDER_FAILED");
       }
     }
 
-    throw new Error(`Nenhum modelo disponível. ${errors.join(" | ")}`);
+    throw lastError;
   }
 }
 
