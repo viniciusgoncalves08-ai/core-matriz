@@ -63,8 +63,8 @@ export async function respondAsNexus(params: {
       },
       [
         {
-          provider: process.env.AI_DEFAULT_PROVIDER ?? "openai",
-          model: agent?.preferredModel || process.env.AI_DEFAULT_MODEL || "gpt-5",
+          provider: process.env.AI_DEFAULT_PROVIDER?.trim() || "openai",
+          model: agent?.preferredModel?.trim() || process.env.AI_DEFAULT_MODEL?.trim() || "gpt-5",
         },
       ],
     );
