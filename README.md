@@ -196,3 +196,7 @@ Em **Histórico → Atividade do Core**, consulte os registros reais de memória
 O contexto respeita a validade das memórias e inclui sua origem/confiança. O envio utiliza até 12 mil caracteres serializados de registros e até 16 mil de mensagens anteriores completas, preservando o histórico original no banco. São limites por caracteres, não por tokens. A recuperação ainda é textual e pode não encontrar sinônimos; o Nexus não possui acesso a todos os registros em cada resposta.
 
 Esta entrega utiliza a infraestrutura atual, sem dependências externas novas ou mudança no banco. APIs de IA continuam seguindo a configuração existente.
+
+### Diagnóstico da conexão de IA
+
+`GET /api/ai/status` exige sessão e informa o provedor/modelo efetivamente selecionado, presença das chaves (somente booleanos) e catálogo Gemini quando aplicável. Não retorna chaves nem erros brutos e não gera respostas de IA. O catálogo não garante cota, faturamento ou sucesso de geração. A resposta usa `private, no-store`.
