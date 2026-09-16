@@ -3,6 +3,7 @@
 import { FormEvent, useState, useRef, useEffect } from "react";
 
 import Link from "next/link";
+import { ActionCards } from "@/features/actions/action-cards";
 import { MessageContent } from "./message-content";
 import { readNexusResponse } from "./read-response";
 
@@ -90,8 +91,10 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
           <div ref={endRef} />
         </div>
       )}
+      {conversationId && <ActionCards key={conversationId} conversationId={conversationId} refresh={messages.length} />}
       {error && <p role="alert" className="chat-error">{error}</p>}
       {loading && <div className="actions" role="status"><span className="muted">{partial ? "Recebendo resposta…" : "Preparando resposta…"}</span><button type="button" onClick={() => abort.current?.abort()}>Interromper</button></div>}
+      <p className="muted action-hint">Para propor uma tarefa, envie: <code>crie uma tarefa: ligar para o fornecedor</code>. Você revisa e confirma antes de salvar.</p>
       <form className="composer" onSubmit={submit}>
         <textarea
           aria-label={`Mensagem para ${agentName}`}
