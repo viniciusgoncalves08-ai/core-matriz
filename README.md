@@ -200,3 +200,7 @@ Esta entrega utiliza a infraestrutura atual, sem dependências externas novas ou
 ### Diagnóstico da conexão de IA
 
 `GET /api/ai/status` exige sessão e informa o provedor/modelo efetivamente selecionado, presença das chaves (somente booleanos) e catálogo Gemini quando aplicável. Não retorna chaves nem erros brutos e não gera respostas de IA. O catálogo não garante cota, faturamento ou sucesso de geração. A resposta usa `private, no-store`.
+
+### Gemini: API nativa
+
+O provider Gemini usa `generateContent` e `streamGenerateContent` diretamente, com autenticação por header. Instruções de sistema e histórico são convertidos ao formato nativo. O streaming exige término `STOP`; limites, bloqueios e interrupções não são salvos como respostas completas. A mudança não troca modelos, não adiciona fallback pago e não altera a chave existente.
