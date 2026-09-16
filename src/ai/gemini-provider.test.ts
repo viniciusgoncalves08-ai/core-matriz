@@ -8,14 +8,14 @@ it("routes Gemini to Google with context and bounded output", async () => {
   vi.stubEnv("GEMINI_API_KEY", " test-key ");
   vi.stubEnv("AI_DEFAULT_PROVIDER", "gemini");
   vi.stubEnv("AI_DEFAULT_MODEL", "gpt-5");
-  const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: "Olá!" } }] })));
+  const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "Olá!" }] }, finishReason: "STOP" }] })));
   vi.stubGlobal("fetch", fetcher);
   const result = await new ModelRouter().generate({ messages }, [getModelTarget("gpt-5")]);
   expect(result).toEqual({ text: "Olá!", model: "gemini-2.5-flash-lite", provider: "gemini" });
   const [url, init] = fetcher.mock.calls[0];
-  expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
-  expect(init.headers.authorization).toBe("Bearer test-key");
-  expect(JSON.parse(init.body)).toMatchObject({ messages, max_tokens: 2048 });
+  expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent");
+  expect(init.headers["x-goog-api-key"]).toBe("test-key");
+  expect(JSON.parse(init.body)).toMatchObject({ systemInstruction: { parts: [{ text: "Contexto" }] }, contents: [{ role: "user", parts: [{ text: "Olá" }] }], generationConfig: { maxOutputTokens: 2048 } });
 });
 it("does not use OpenAI or retry when Gemini quota is exhausted", async () => {
   vi.stubEnv("GEMINI_API_KEY", "test-key");
@@ -47,4 +47,12 @@ it("preserves an explicit Gemini model and supports switching back later", () =>
   vi.stubEnv("AI_DEFAULT_PROVIDER", "openai");
   vi.stubEnv("AI_DEFAULT_MODEL", "gemini-2.5-flash-lite");
   expect(getModelTarget("gemini-2.5-flash")).toEqual({ provider: "openai", model: "gpt-5" });
+});
+it("streams through the native endpoint with the same model and key", async () => {
+  vi.stubEnv("GEMINI_API_KEY", "test-key");
+  const event = { candidates: [{ content: { parts: [{ text: "OK" }] }, finishReason: "STOP" }] };
+  const fetcher = vi.fn().mockResolvedValue(new Response(`data: ${JSON.stringify(event)}\n\n`)); vi.stubGlobal("fetch", fetcher);
+  const delta = vi.fn(); const result = await new GeminiProvider().stream({ messages, model: "gemini-2.5-flash-lite" }, delta);
+  expect(fetcher.mock.calls[0][0]).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse");
+  expect(result.text).toBe("OK"); expect(delta).toHaveBeenCalledWith("OK");
 });
