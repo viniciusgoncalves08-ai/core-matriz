@@ -204,3 +204,20 @@ Esta entrega utiliza a infraestrutura atual, sem dependências externas novas ou
 ### Gemini: API nativa
 
 O provider Gemini usa `generateContent` e `streamGenerateContent` diretamente, com autenticação por header. Instruções de sistema e histórico são convertidos ao formato nativo. O streaming exige término `STOP`; limites, bloqueios e interrupções não são salvos como respostas completas. A mudança não troca modelos, não adiciona fallback pago e não altera a chave existente.
+
+### Tarefas com confirmação no Nexus
+
+Envie `crie uma tarefa: ligar para o fornecedor` ou `/tarefa ligar para o fornecedor`.
+O pedido explícito prepara uma proposta sem chamar o provedor de IA. Revise o título,
+o prazo opcional e a prioridade no cartão antes de confirmar. Texto livre ainda não
+é interpretado como ação. Datas no título não preenchem o prazo automaticamente.
+
+As propostas expiram em 24 horas e podem ser canceladas. A confirmação autenticada
+cria a tarefa e os registros de auditoria na mesma transação; confirmações repetidas
+ou simultâneas não duplicam a tarefa. Cada proposta pertence ao dono da conversa.
+São mostradas as 30 propostas mais recentes. Criar uma tarefa não agenda notificações.
+Esta primeira ferramenta usa metadados versionados da mensagem, sem integração externa
+ou um mecanismo genérico de automações.
+
+Os testes de concorrência usam PostgreSQL isolado na CI, com `ACTION_DB_TESTS=true`.
+Localmente ficam desativados por padrão; só aceitam banco `core_matriz` em localhost.

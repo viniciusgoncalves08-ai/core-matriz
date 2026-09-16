@@ -25,6 +25,7 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/core_matriz?schema=public
+      ACTION_DB_TESTS: "true"
       AUTH_SECRET: ci-only-secret-that-is-long-enough-for-tests
       OPENAI_API_KEY: ci-placeholder
       AI_DEFAULT_MODEL: gpt-5
