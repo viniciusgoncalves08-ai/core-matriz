@@ -237,3 +237,19 @@ Criação e edição geram auditoria transacional, acessível em Atividade → O
 Métricas automáticas, múltiplos projetos por objetivo, vínculos diretos com tarefas
 e notificações continuam pendentes. A migração adiciona apenas uma relação opcional;
 não apaga registros existentes.
+
+### Projetos pelo Nexus
+
+Envie `crie um projeto: nome`, `registre um projeto: nome` ou `/projeto nome`.
+O cartão permite revisar nome, descrição e situação inicial (ideia, planejamento ou ativo).
+Somente a confirmação cria o projeto, com auditoria e link para a página do projeto.
+O comando explícito não chama um provedor de IA.
+
+Tarefas e projetos compartilham o fluxo de confirmação: vínculo ao usuário da conversa,
+validade de 24 horas, cancelamento e execução transacional idempotente. A ferramenta
+é determinada pela proposta salva; o cliente não pode trocá-la na confirmação.
+A proteção impede duplicar a mesma proposta, mas pedidos novos podem criar projetos
+com nomes iguais. Propostas antigas de tarefa continuam compatíveis.
+
+Esta entrega não inclui edição de projetos pelo chat, tarefas automáticas, acompanhamento
+proativo nem notificações. A edição continua disponível na área Projetos.

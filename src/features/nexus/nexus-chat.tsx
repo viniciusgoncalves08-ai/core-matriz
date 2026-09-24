@@ -94,7 +94,7 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
       {conversationId && <ActionCards key={conversationId} conversationId={conversationId} refresh={messages.length} />}
       {error && <p role="alert" className="chat-error">{error}</p>}
       {loading && <div className="actions" role="status"><span className="muted">{partial ? "Recebendo resposta…" : "Preparando resposta…"}</span><button type="button" onClick={() => abort.current?.abort()}>Interromper</button></div>}
-      <p className="muted action-hint">Para propor uma tarefa, envie: <code>crie uma tarefa: ligar para o fornecedor</code>. Você revisa e confirma antes de salvar.</p>
+      <p className="muted action-hint">Para propor uma tarefa, envie: <code>crie uma tarefa: ligar para o fornecedor</code>. Para projetos: <code>crie um projeto: expansão da loja</code>. Você revisa e confirma antes de salvar.</p>
       <form className="composer" onSubmit={submit}>
         <textarea
           aria-label={`Mensagem para ${agentName}`}
