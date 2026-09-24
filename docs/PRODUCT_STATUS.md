@@ -11,23 +11,23 @@ Sem Lovable. Provedores de IA são integrações do produto, não desenvolvedore
 | --- | --- | --- |
 | Fundação, banco e deploy (3–5, 53, 55, 65–66) | Next.js, React, TypeScript, Prisma/PostgreSQL, migration inicial, CI e publicação Vercel | Expandir testes de navegador e observabilidade; manter gates em cada entrega |
 | Autenticação (51–52) | Cadastro, login, sessão HTTP-only, hash de senha, API de logout, consultas por usuário | Recuperação de senha, configurações e logout visível, rate limiting e revisão de abuso |
-| Chat (6–8) | Rota própria, histórico persistente, continuidade, streaming OpenAI/Gemini, Markdown, código, tabelas, estado de erro e interrupção | Anexos, pesquisa de conversas, status de ferramentas e confirmações |
+| Chat (6–8) | Rota própria, histórico persistente, continuidade, streaming OpenAI/Gemini, Markdown, código, tabelas, estado de erro e interrupção | Anexos, pesquisa de conversas e ferramentas além de propostas explícitas de tarefa |
 | Identidade (7) | Nome e instruções editáveis no agente | Configuração central de nome/avatar/voz/proatividade; ainda existem textos Nexus fixos |
 | Memória (9–12) | Classificação, conteúdo, resumo, origem, importância, confiança, bloqueio, edição e versões, exclusão lógica | Relações com entidades, tags na UI, marcar incorreta, validade completa, inferência com evidências, paginação e extração controlada pelo Nexus |
-| Context Engine (13) | Filtros textuais por usuário, validade temporal da memória, origem/confiança, até 12 mil caracteres serializados de contexto e até 16 mil de histórico recente | Intent Engine, entidades, ranking híbrido, orçamento por tokens exatos, relações e objetivos/arquivos; busca ainda lexical, sem compreensão semântica |
+| Context Engine (13) | Filtros textuais por usuário, validade temporal da memória, origem/confiança e objetivos relevantes, até 12 mil caracteres serializados de contexto e até 16 mil de histórico recente | Intent Engine, entidades, ranking híbrido, orçamento por tokens exatos, relações e arquivos; busca ainda lexical, sem compreensão semântica |
 | Busca / embeddings (14–15) | Busca local nas listas de memória, projeto e tarefa | Busca global no servidor, períodos/entidades, full-text e busca semântica; pgvector ainda não instalado |
 | Agent Hub (16–19) | Criar/editar, pausar/ativar, prompt/modelo/temperatura e conversa individual com identidade persistente | Coordenação automática pelo Nexus, execuções encadeadas, catálogo de ferramentas/permissões e painel de execuções |
 | Providers / Router (20–23) | Interface comum generate/stream/healthCheck; OpenAI/Gemini; fallback técnico explícito, sem misturar streams | Anthropic, embeddings/toolCall, seleção por capacidades/custo e orçamento; nenhuma troca paga automática no fluxo atual |
-| Permissões / ações / tools (24–26) | Enum de níveis e campos estruturais em agentes/auditoria | Motor de permissões, ferramentas executáveis, pedidos de confirmação, expiração, idempotência e execução autenticada. Não há ferramentas externas funcionando |
+| Permissões / ações / tools (24–26) | Propostas de tarefa por comando explícito, confirmação autenticada, cancelamento, expiração, idempotência e auditoria | Motor genérico de permissões e novas ferramentas. Não há ferramentas externas funcionando |
 | Projetos / tarefas (27–30) | Telas, APIs, vínculo tarefa–projeto, prazos, prioridade, situações, arquivo/restauração de projeto, auditoria | Responsáveis, tags, dependências, relações, histórico visível, criação por intenção e políticas para tarefas implícitas |
-| Objetivos (31) | Modelo Goal no banco | CRUD e tela, métricas, vínculos a projetos/tarefas, histórico e atraso |
+| Objetivos (31) | Cadastro/edição, progresso manual, situações, prazo, vínculo opcional a projeto, auditoria, Home e contexto do Nexus | Métricas automáticas, múltiplos projetos/tarefas, histórico detalhado de campos e notificações |
 | Eventos / automações / proatividade (32–34) | Sem implementação operacional | Eventos persistidos, processador, regras confirmadas, notificações, cooldown, relevância e histórico |
 | Auditoria (35) | Registros de Nexus, agentes, projetos, tarefas e memória; gravação transacional; tela `/atividade` com filtros e paginação | Permissões, consulta dos registros pelo Nexus e parâmetros/autorização estruturados; registros antigos de memória não foram reconstruídos |
 | Empresas / Vivessence / AutoShow (36–38) | Modelo Organization genérico | CRUD, relações de negócio e adaptadores reais; sem API de estoque/vendas conectada |
 | Calendar / arquivos / links (39–41) | Não implementados | OAuth, storage, validação de upload, processamento, links e permissões de execução |
 | Veículos / finanças / smart home (42–44) | Não implementados | Domínios posteriores; sem alertas ou integração simulada |
 | Canais / voz (45–46, 59) | Web responsiva | Voz, Telegram, WhatsApp e e-mail dependem de integrações futuras |
-| Home (47–50) | Módulos, contagens reais, tarefas abertas/atrasadas e projetos recentes; navegação mobile | Visão Hoje com objetivos, notificações confirmadas e insights fundamentados. Contagem de atraso não é motor proativo |
+| Home (47–50) | Módulos, contagens reais, tarefas abertas/atrasadas projetos recentes e objetivos com progresso/prazo; navegação mobile | Notificações confirmadas e insights fundamentados. Contagem de atraso não é motor proativo |
 
 ## Critério de estado
 
@@ -35,7 +35,7 @@ Sem Lovable. Provedores de IA são integrações do produto, não desenvolvedore
 - Provider implementado não significa que uma chave real esteja configurada ou que a resposta ao vivo foi validada.
 - Testes de streaming usam respostas simuladas apenas nos testes; produção só consome provedores reais.
 - Fase 1 ainda parcial pelas lacunas de memória/contexto, segurança e confirmação descritas acima.
-- Fase 2 parcial: projetos, tarefas, histórico e resumo; faltam objetivos, notificações e busca global.
+- Fase 2 parcial: projetos, tarefas, histórico e resumo; inclui objetivos básicos; faltam notificações e busca global.
 - Fases 3–5 não estão entregues. Não há automação, execução multiagente nem integração externa fingida.
 
 ## Ordem de continuidade

@@ -17,7 +17,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
       <div className="actions"><Link className="button-link" href="/historico">Conversas</Link><span className="tag">Atividade</span></div>
       <form className="panel workspace-form" action="/atividade">
         <div className="work-fields">
-          <label>Área<select name="kind" defaultValue={filter.kind}><option value="all">Todas</option><option value="memory">Memória</option><option value="project">Projetos</option><option value="task">Tarefas</option><option value="agent">Agentes</option><option value="conversation">Nexus</option></select></label>
+          <label>Área<select name="kind" defaultValue={filter.kind}><option value="all">Todas</option><option value="memory">Memória</option><option value="project">Projetos</option><option value="task">Tarefas</option><option value="goal">Objetivos</option><option value="agent">Agentes</option><option value="conversation">Nexus</option></select></label>
           <label>Resultado<select name="result" defaultValue={filter.result}><option value="all">Todos</option><option value="success">Concluído</option><option value="failure">Não concluído</option></select></label>
         </div><div className="actions"><button type="submit">Filtrar</button><Link href="/atividade">Limpar filtros</Link></div>
       </form>
@@ -29,6 +29,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
         <time className="muted" dateTime={item.createdAt.toISOString()}>{item.createdAt.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</time>
         <div className="actions">{item.model && <span className="tag">Modelo: {item.model}</span>}{item.durationMs !== null && <span className="muted">{(item.durationMs / 1000).toFixed(1)} s</span>}</div>
         {item.entityId && item.entityType === "conversation" && <Link href={`/historico/${encodeURIComponent(item.entityId)}`}>Abrir conversa</Link>}
+        {item.entityType === "goal" && <Link href="/objetivos">Ver objetivos</Link>}
         {item.entityId && item.entityType === "project" && <Link href={`/projetos/${encodeURIComponent(item.entityId)}`}>Abrir projeto</Link>}
       </article>)}
       {data && <nav className="actions" aria-label="Páginas de atividade">{filter.page > 1 && <Link className="button-link" href={pageLink(filter.page - 1)}>Anterior</Link>}<span>Página {filter.page}</span>{data.hasMore && filter.page < 1000 && <Link className="button-link" href={pageLink(filter.page + 1)}>Próxima</Link>}</nav>}
