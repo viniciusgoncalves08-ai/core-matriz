@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const queries = vi.hoisted(() => ({ memory: { findMany: vi.fn() }, project: { findMany: vi.fn() }, task: { findMany: vi.fn() } }));
+const queries = vi.hoisted(() => ({ memory: { findMany: vi.fn() }, project: { findMany: vi.fn() }, task: { findMany: vi.fn() }, goal: { findMany: vi.fn() } }));
 vi.mock("@/lib/db", () => ({ db: queries }));
 import { buildContext, serializeContext, extractContextTerms } from "./context-engine";
 
@@ -22,7 +22,7 @@ describe("extractContextTerms", () => {
 
 beforeEach(() => { vi.clearAllMocks(); for (const query of Object.values(queries)) query.findMany.mockResolvedValue([]); });
 it("does not retrieve unrelated private data for greetings", async () => {
-  expect(await buildContext("u1", "Oi, como você está?")).toEqual({ memories: [], projects: [], tasks: [] });
+  expect(await buildContext("u1", "Oi, como você está?")).toEqual({ memories: [], projects: [], tasks: [], goals: [] });
   expect(queries.memory.findMany).not.toHaveBeenCalled();
 });
 it("scopes every domain to the owner and enforces memory validity", async () => {
@@ -45,4 +45,16 @@ it("supports explicit requests to list projects and tasks without requiring thos
   expect(queries.task.findMany.mock.calls[0][0].where.OR).toBeUndefined();
   await buildContext("u1", "Meus projetos");
   expect(queries.project.findMany.mock.calls[1][0].where.OR).toBeUndefined();
+});
+
+it("retrieves goals with ownership and a bounded result set", async () => {
+  await buildContext("u1", "Minhas metas");
+  expect(queries.goal.findMany).toHaveBeenCalledWith(expect.objectContaining({where:{userId:"u1",status:{in:["active","paused"]}},take:5}));
+});
+
+it("keeps goal progress in the serialized context without exceeding its budget", () => {
+  const goals = Array.from({length: 5}, (_, index) => ({id:String(index),title:"Meta",description:"x".repeat(5000),status:"active",progress:25,dueAt:null,projectId:null}));
+  const text=serializeContext({memories:[],projects:[],tasks:[],goals});
+  expect(text.length).toBeLessThanOrEqual(12000);
+  expect(JSON.parse(text).goals[0].progress).toBe(25);
 });

@@ -221,3 +221,19 @@ ou um mecanismo genérico de automações.
 
 Os testes de concorrência usam PostgreSQL isolado na CI, com `ACTION_DB_TESTS=true`.
 Localmente ficam desativados por padrão; só aceitam banco `core_matriz` em localhost.
+
+### Objetivos
+
+A área `/objetivos` permite criar e editar objetivos com título, descrição, categoria,
+prazo por data, progresso manual (0–100%) e um projeto opcional da mesma conta.
+Situações: em andamento, pausado, concluído e cancelado. Concluir define 100%;
+tarefas do projeto não são alteradas. Reabrir e cancelar ficam disponíveis em Editar.
+Não há exclusão permanente nessa primeira versão.
+
+A Home destaca até quatro objetivos em andamento e sinaliza prazos vencidos.
+O Context Engine recupera até cinco objetivos relevantes em andamento/pausados,
+mantendo o limite total de 12 mil caracteres. A busca ainda é textual.
+Criação e edição geram auditoria transacional, acessível em Atividade → Objetivos.
+Métricas automáticas, múltiplos projetos por objetivo, vínculos diretos com tarefas
+e notificações continuam pendentes. A migração adiciona apenas uma relação opcional;
+não apaga registros existentes.

@@ -30,5 +30,9 @@ export async function HomeOverview({ userId }: { userId: string }) {
         {data.projects.length ? <ul className="overview-list">{data.projects.map(project => <li key={project.id}><Link href={`/projetos/${project.id}`}>{project.name}</Link><span className="tag">{projectStatuses[project.status]}</span></li>)}</ul> : <div className="overview-empty"><h3>Qual será sua próxima iniciativa?</h3><p className="muted">Crie um projeto para reunir suas ideias e tarefas.</p><Link className="button-link" href="/projetos">Organizar projetos</Link></div>}
       </section>
     </div>
+    <section className="panel"><div className="overview-heading"><h2>Objetivos em andamento</h2><Link href="/objetivos">Ver objetivos</Link></div>
+      {data.goals.length ? <ul className="overview-list">{data.goals.map(goal => <li key={goal.id}><Link href="/objetivos">{goal.title}</Link><span>{goal.progress}%</span><progress className="goal-progress" aria-label={"Progresso de " + goal.title} value={goal.progress} max={100} /><p className={goal.dueAt && goal.dueAt < data.today ? "deadline-overdue" : "muted"}>{goal.dueAt && goal.dueAt < data.today ? "Prazo vencido · " : ""}{goal.dueAt ? goal.dueAt.toISOString().slice(0, 10).split("-").reverse().join("/") : "Sem prazo"}</p></li>)}</ul> : <p className="muted">Nenhum objetivo em andamento. <Link href="/objetivos">Defina seu primeiro objetivo.</Link></p>}
+      <p className="overview-footnote">Até 4 objetivos, priorizando os prazos mais próximos. Progresso informado por você.</p>
+    </section>
   </section>;
 }
