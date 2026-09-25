@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
-import { proposeTask, decideAction, listActions, ActionNotFoundError } from "./action-service";
+import { proposeTask, proposeProject, decideAction, listActions, ActionNotFoundError } from "./action-service";
 
 describe.skipIf(process.env.ACTION_DB_TESTS !== "true")("task confirmation with real Postgres", () => {
   let userId: string;
@@ -22,6 +22,7 @@ describe.skipIf(process.env.ACTION_DB_TESTS !== "true")("task confirmation with 
     expect(await db.task.count({where:{userId}})).toBe(0);
     const results=await Promise.all([decideAction(userId,id,confirm),decideAction(userId,id,confirm)]);
     expect(results[0].status).toBe("succeeded");
+    if (results[0].tool !== "task.create" || results[1].tool !== "task.create") throw new Error("Wrong tool");
     expect(results[0].taskId).toBe(results[1].taskId);
     expect(await db.task.count({where:{userId}})).toBe(1);
     const task=await db.task.findUniqueOrThrow({where:{id:results[0].taskId}});
@@ -43,4 +44,26 @@ describe.skipIf(process.env.ACTION_DB_TESTS !== "true")("task confirmation with 
     expect((await decideAction(userId,id,confirm)).status).toBe("expired");
     expect(await db.task.count({where:{userId}})).toBe(1);
   });
+  it("creates a project once after two simultaneous confirmations", async () => {
+    const id=(await proposeProject({userId,conversationId,message:"/projeto Loja",name:"Loja"})).message.id;
+    expect(await db.project.count({where:{userId}})).toBe(0);
+    const decision={decision:"confirm",input:{name:"Loja revisada",description:"Plano inicial",status:"PLANNING"}};
+    const [a,b]=await Promise.all([decideAction(userId,id,decision),decideAction(userId,id,decision)]);
+    if(a.tool!=="project.create" || b.tool!=="project.create") throw new Error("Wrong tool");
+    expect(a.status).toBe("succeeded");
+    expect(a.projectId).toBe(b.projectId);
+    expect(await db.project.count({where:{userId}})).toBe(1);
+    expect(await db.project.findUnique({where:{id:a.projectId}})).toMatchObject({name:"Loja revisada",description:"Plano inicial",status:"PLANNING",userId});
+    expect(await db.auditLog.count({where:{userId,action:"PROJECT_CREATED",permission:"CONFIRM"}})).toBe(1);
+  });
+  it("rejects a mismatched tool payload without consuming the proposal", async () => {
+    const id=(await proposeProject({userId,conversationId,message:"/projeto Seguro",name:"Seguro"})).message.id;
+    await expect(decideAction(userId,id,confirm)).rejects.toThrow();
+    expect((await listActions(userId,conversationId)).find(a=>a.id===id)?.status).toBe("pending");
+    await expect(decideAction("other",id,{decision:"confirm",input:{name:"Inválido"}})).rejects.toBeInstanceOf(ActionNotFoundError);
+    expect((await decideAction(userId,id,{decision:"cancel"})).status).toBe("cancelled");
+    expect((await decideAction(userId,id,{decision:"confirm",input:{name:"Não executar"}})).status).toBe("cancelled");
+    expect(await db.project.count({where:{userId}})).toBe(1);
+  });
+
 });

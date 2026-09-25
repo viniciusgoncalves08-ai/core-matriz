@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ findAgent: vi.fn(), findConversation: vi.fn(), history: vi.fn(), createMessage: vi.fn(), generate: vi.fn(), stream: vi.fn() }));
+const mocks = vi.hoisted(() => ({ proposeProject: vi.fn(), proposeTask: vi.fn(), findAgent: vi.fn(), findConversation: vi.fn(), history: vi.fn(), createMessage: vi.fn(), generate: vi.fn(), stream: vi.fn() }));
 vi.mock("@/lib/db", () => ({ db: { $transaction: async (action: (tx: unknown) => unknown) => action({ message: { create: mocks.createMessage }, conversation: { update: vi.fn() }, auditLog: { create: vi.fn() } }), agent: { findFirst: mocks.findAgent }, conversation: { findFirst: mocks.findConversation, update: vi.fn() }, message: { findMany: mocks.history, create: mocks.createMessage }, auditLog: { create: vi.fn() } } }));
 vi.mock("@/features/context/context-engine", () => ({ buildContext: vi.fn().mockResolvedValue({}), serializeContext: () => "" }));
 vi.mock("@/ai/model-router", () => ({ modelRouter: { generate: mocks.generate, stream: mocks.stream } }));
+vi.mock("@/features/actions/action-service", () => ({ proposeProject: mocks.proposeProject, proposeTask: mocks.proposeTask }));
 import { respondAsNexus } from "./nexus-service";
 describe("continuidade do Nexus", () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.findAgent.mockResolvedValue(null); mocks.generate.mockResolvedValue({ text: "Resposta", model: "test", provider: "test" }); });
@@ -80,4 +81,22 @@ it("does not persist a partial assistant response when the stream fails", async 
   mocks.stream.mockImplementationOnce(async (_input, _targets, onDelta) => { onDelta("Parcial"); throw new Error("disconnect"); });
   await expect(respondAsNexus({ userId: "u1", conversationId: "c1", message: "Oi", onDelta: vi.fn() })).rejects.toThrow();
   expect(mocks.createMessage.mock.calls.filter(([args]) => args.data.role === "assistant")).toHaveLength(0);
+});
+
+it("routes an explicit project request without calling a paid model", async () => {
+  vi.clearAllMocks();
+  mocks.findConversation.mockResolvedValue({id:"c"});
+  mocks.findAgent.mockResolvedValue(null);
+  mocks.proposeProject.mockResolvedValue({message:{id:"proposal"},context:{}});
+  const result=await respondAsNexus({userId:"u",conversationId:"c",message:"crie um projeto: Loja"});
+  expect(result.message.id).toBe("proposal");
+  expect(mocks.proposeProject).toHaveBeenCalledWith(expect.objectContaining({userId:"u",conversationId:"c",name:"Loja"}));
+  expect(mocks.generate).not.toHaveBeenCalled();
+  expect(mocks.stream).not.toHaveBeenCalled();
+});
+it("does not propose projects in a foreign conversation", async () => {
+  vi.clearAllMocks();
+  mocks.findConversation.mockResolvedValue(null);
+  await expect(respondAsNexus({userId:"other",conversationId:"c",message:"/projeto Loja"})).rejects.toThrow();
+  expect(mocks.proposeProject).not.toHaveBeenCalled();
 });

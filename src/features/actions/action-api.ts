@@ -10,6 +10,6 @@ export async function actionResponse(operation: (userId: string) => Promise<unkn
     return NextResponse.json(await operation(userId), { headers });
   } catch (error) {
     const status = error instanceof ActionNotFoundError ? 404 : error instanceof ActionConflictError ? 409 : error instanceof z.ZodError || error instanceof SyntaxError ? 400 : 500;
-    return NextResponse.json({ error: status === 404 ? "Ação não encontrada." : status === 400 ? "Confira os dados da tarefa." : "Não foi possível concluir. Atualize as ações para conferir o resultado antes de tentar novamente." }, { status, headers });
+    return NextResponse.json({ error: status === 404 ? "Ação não encontrada." : status === 400 ? "Confira os dados da proposta." : "Não foi possível concluir. Atualize as ações para conferir o resultado antes de tentar novamente." }, { status, headers });
   }
 }
