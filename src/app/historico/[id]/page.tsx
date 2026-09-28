@@ -1,3 +1,4 @@
+import { recallSources } from "@/features/nexus/recall-sources";
 import { notFound, redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -10,7 +11,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   const { id } = await params;
   const conversation = await db.conversation.findFirst({ where: { id, userId }, include: { messages: { orderBy: { createdAt: "asc" } } } });
   if (!conversation) notFound();
-  const messages = conversation.messages.filter(m => m.role === "user" || m.role === "assistant").map(m => ({ role: m.role as "user" | "assistant", content: m.content }));
+  const messages = conversation.messages.filter(m => m.role === "user" || m.role === "assistant").map(m => ({ role: m.role as "user" | "assistant", content: m.content, sources: recallSources(m.metadata) }));
   const last = conversation.messages.at(-1)?.metadata;
   const metadata = last && typeof last === "object" && !Array.isArray(last) ? last : {};
   const agentId = typeof metadata.agentId === "string" ? metadata.agentId : undefined;

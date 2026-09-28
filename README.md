@@ -270,3 +270,21 @@ repete a alteração. A atualização e a auditoria são gravadas na mesma trans
 
 Concluir/arquivar o projeto não altera tarefas ou objetivos vinculados.
 Este fluxo não envia lembretes nem acompanha o projeto automaticamente.
+
+### Recuperação de conversas anteriores
+
+O Nexus consulta memórias estruturadas e também trechos relevantes do histórico persistido,
+inclusive de outras conversas da mesma conta. A busca textual considera variações simples
+de plural e vocabulário de leitura; não é busca semântica por embeddings.
+Uma pergunta curta de continuidade pode aproveitar o assunto das três últimas mensagens
+do usuário na conversa atual. Saudações não disparam uma leitura geral do histórico.
+
+A busca considera até 24 mensagens correspondentes, seleciona até seis trechos com origem,
+papel e data, e os encaixa no orçamento total de 12 mil caracteres do contexto. Conversas
+vinculadas a memórias bloqueadas, excluídas ou substituídas são excluídas dessa recuperação.
+O histórico recente da conversa atual continua separado. As respostas são orientadas a citar
+a conversa de origem e a tratar textos antigos do assistente como histórico, não fatos.
+
+Nenhum resultado encontrado não significa nenhum dado salvo. A ausência de memória
+estruturada não apaga conversas. Não há extração automática de fatos para a tabela de
+memórias nesta versão; cadastro/correção/bloqueio continuam na área Memória.

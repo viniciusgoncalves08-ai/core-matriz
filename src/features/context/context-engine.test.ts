@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const queries = vi.hoisted(() => ({ memory: { findMany: vi.fn() }, project: { findMany: vi.fn() }, task: { findMany: vi.fn() }, goal: { findMany: vi.fn() } }));
+const queries = vi.hoisted(() => ({ memory: { findMany: vi.fn() }, project: { findMany: vi.fn() }, task: { findMany: vi.fn() }, goal: { findMany: vi.fn() }, message: { findMany: vi.fn() } }));
 vi.mock("@/lib/db", () => ({ db: queries }));
 import { buildContext, serializeContext, extractContextTerms } from "./context-engine";
 
@@ -27,8 +27,9 @@ it("does not retrieve unrelated private data for greetings", async () => {
 });
 it("scopes every domain to the owner and enforces memory validity", async () => {
   await buildContext("u1", "estoque");
-  for (const query of Object.values(queries)) expect(query.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ userId: "u1" }) }));
+  for (const query of [queries.memory, queries.project, queries.task, queries.goal]) expect(query.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ userId: "u1" }) }));
   expect(queries.memory.findMany.mock.calls[0][0].where).toMatchObject({ status: "ACTIVE", validFrom: { lte: expect.any(Date) }, AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: expect.any(Date) } }] }] });
+  expect(queries.message.findMany.mock.calls[0][0].where.conversation.userId).toBe("u1");
   expect(queries.task.findMany.mock.calls[0][0].where.OR).toEqual([{ title: { contains: "estoque", mode: "insensitive" } }]);
 });
 it("bounds escaped context while reserving space for every domain", () => {
@@ -57,4 +58,16 @@ it("keeps goal progress in the serialized context without exceeding its budget",
   const text=serializeContext({memories:[],projects:[],tasks:[],goals});
   expect(text.length).toBeLessThanOrEqual(12000);
   expect(JSON.parse(text).goals[0].progress).toBe(25);
+});
+
+it("uses the topic from recent user turns for a short follow-up", async () => {
+  await buildContext("u1", "E aquele plano?", {recentUserMessages:["Quero organizar minha leitura de livros"],excludeMessageIds:["recent"]});
+  const query=queries.message.findMany.mock.calls[0][0];
+  expect(query.where.OR).toContainEqual({content:{contains:"leitura",mode:"insensitive"}});
+  expect(query.where.id).toEqual({notIn:["recent"]});
+});
+it("can list a bounded memory sample for a profile request without unrelated project queries", async () => {
+  await buildContext("u1", "O que você sabe sobre mim?");
+  expect(queries.memory.findMany.mock.calls[0][0].where.OR).toBeUndefined();
+  expect(queries.project.findMany).not.toHaveBeenCalled();
 });

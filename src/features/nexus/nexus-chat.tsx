@@ -5,9 +5,10 @@ import { FormEvent, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { ActionCards } from "@/features/actions/action-cards";
 import { MessageContent } from "./message-content";
+import { recallSources } from "./recall-sources";
 import { readNexusResponse } from "./read-response";
 
-type ChatMessage = { role: "user" | "assistant"; content: string };
+type ChatMessage = { role: "user" | "assistant"; content: string; sources?: string[] };
 
 export function NexusChat({ initialConversationId = null, initialMessages = [], agentId, agentName = "Nexus" }: { agentId?: string; agentName?: string; initialConversationId?: string | null; initialMessages?: ChatMessage[] }) {
   const abort = useRef<AbortController | null>(null);
@@ -64,8 +65,9 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
         throw new Error(data.error ?? "Falha ao consultar o Nexus.");
       }
       if (!response.body) throw new Error("A conexão não retornou uma resposta.");
-      const content = await readNexusResponse(response.body, text => setPartial(current => current + text));
-      setMessages(current => [...current, { role: "assistant", content }]);
+      let sources: string[] = [];
+      const content = await readNexusResponse(response.body, text => setPartial(current => current + text), metadata => { sources = recallSources(metadata); });
+      setMessages(current => [...current, { role: "assistant", content, sources }]);
       setPartial("");
     } catch (cause) {
       setError(abort.current?.signal.aborted ? "Transmissão interrompida. Consulte o histórico para verificar o que foi salvo." : cause instanceof Error ? cause.message : "Erro inesperado");
@@ -85,6 +87,7 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
             <div className={`chat-message ${message.role}`} key={`${message.role}-${index}`}>
               <strong>{message.role === "user" ? "Você" : agentName}</strong>
               {message.role === "assistant" ? <MessageContent content={message.content} /> : <p>{message.content}</p>}
+              {message.role === "assistant" && Boolean(message.sources?.length) && <details><summary>Conversas encontradas no histórico</summary><div className="actions">{message.sources!.map((id, index) => <Link key={id} href={`/historico/${encodeURIComponent(id)}`}>Conversa {index + 1}</Link>)}</div></details>}
             </div>
           ))}
           {partial && <div className="chat-message assistant"><strong>{agentName}</strong><MessageContent content={partial} /><small>{loading ? "Recebendo…" : "Trecho parcial — confira o histórico"}</small></div>}
