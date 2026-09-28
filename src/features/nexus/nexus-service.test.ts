@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ proposeProject: vi.fn(), proposeTask: vi.fn(), findAgent: vi.fn(), findConversation: vi.fn(), history: vi.fn(), createMessage: vi.fn(), generate: vi.fn(), stream: vi.fn() }));
+const mocks = vi.hoisted(() => ({ proposeProjectEdit: vi.fn(), proposeProject: vi.fn(), proposeTask: vi.fn(), findAgent: vi.fn(), findConversation: vi.fn(), history: vi.fn(), createMessage: vi.fn(), generate: vi.fn(), stream: vi.fn() }));
 vi.mock("@/lib/db", () => ({ db: { $transaction: async (action: (tx: unknown) => unknown) => action({ message: { create: mocks.createMessage }, conversation: { update: vi.fn() }, auditLog: { create: vi.fn() } }), agent: { findFirst: mocks.findAgent }, conversation: { findFirst: mocks.findConversation, update: vi.fn() }, message: { findMany: mocks.history, create: mocks.createMessage }, auditLog: { create: vi.fn() } } }));
 vi.mock("@/features/context/context-engine", () => ({ buildContext: vi.fn().mockResolvedValue({}), serializeContext: () => "" }));
 vi.mock("@/ai/model-router", () => ({ modelRouter: { generate: mocks.generate, stream: mocks.stream } }));
-vi.mock("@/features/actions/action-service", () => ({ proposeProject: mocks.proposeProject, proposeTask: mocks.proposeTask }));
+vi.mock("@/features/actions/action-service", () => ({ proposeProjectEdit: mocks.proposeProjectEdit, proposeProject: mocks.proposeProject, proposeTask: mocks.proposeTask }));
 import { respondAsNexus } from "./nexus-service";
 describe("continuidade do Nexus", () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.findAgent.mockResolvedValue(null); mocks.generate.mockResolvedValue({ text: "Resposta", model: "test", provider: "test" }); });
@@ -99,4 +99,15 @@ it("does not propose projects in a foreign conversation", async () => {
   mocks.findConversation.mockResolvedValue(null);
   await expect(respondAsNexus({userId:"other",conversationId:"c",message:"/projeto Loja"})).rejects.toThrow();
   expect(mocks.proposeProject).not.toHaveBeenCalled();
+});
+
+it("routes project edit proposals without invoking the model", async () => {
+  vi.clearAllMocks();
+  mocks.findConversation.mockResolvedValue({id:"c"});
+  mocks.findAgent.mockResolvedValue(null);
+  mocks.proposeProjectEdit.mockResolvedValue({message:{id:"edit"}});
+  await respondAsNexus({userId:"u",conversationId:"c",message:"edite o projeto: Loja"});
+  expect(mocks.proposeProjectEdit).toHaveBeenCalledWith(expect.objectContaining({userId:"u",query:"Loja"}));
+  expect(mocks.generate).not.toHaveBeenCalled();
+  expect(mocks.stream).not.toHaveBeenCalled();
 });

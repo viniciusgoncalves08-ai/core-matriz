@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
-import { proposeTask, proposeProject, decideAction, listActions, ActionNotFoundError } from "./action-service";
+import { proposeTask, proposeProject, proposeProjectEdit, ProjectSelectionError, ActionConflictError, decideAction, listActions, ActionNotFoundError } from "./action-service";
 
 describe.skipIf(process.env.ACTION_DB_TESTS !== "true")("task confirmation with real Postgres", () => {
   let userId: string;
@@ -64,6 +64,27 @@ describe.skipIf(process.env.ACTION_DB_TESTS !== "true")("task confirmation with 
     expect((await decideAction(userId,id,{decision:"cancel"})).status).toBe("cancelled");
     expect((await decideAction(userId,id,{decision:"confirm",input:{name:"Não executar"}})).status).toBe("cancelled");
     expect(await db.project.count({where:{userId}})).toBe(1);
+  });
+
+  it("edits an owned project once, then rejects stale proposals", async () => {
+    const project=await db.project.create({data:{userId,name:"Edit target",status:"ACTIVE"}});
+    const proposal=await proposeProjectEdit({userId,conversationId,message:"/editar-projeto Edit target",query:"Edit target"});
+    expect((await db.project.findUniqueOrThrow({where:{id:project.id}})).status).toBe("ACTIVE");
+    const decision={decision:"confirm",input:{name:"Edit target",description:"Revisado",status:"PAUSED"}};
+    await decideAction(userId,proposal.message.id,decision);
+    await decideAction(userId,proposal.message.id,decision);
+    expect((await db.project.findUniqueOrThrow({where:{id:project.id}})).status).toBe("PAUSED");
+    expect(await db.auditLog.count({where:{entityId:project.id,action:"PROJECT_UPDATED"}})).toBe(1);
+    const next=await proposeProjectEdit({userId,conversationId,message:"editar",query:project.id});
+    await db.project.update({where:{id:project.id},data:{description:"Alteração mais recente",updatedAt:new Date(Date.now()+1000)}});
+    await expect(decideAction(userId,next.message.id,decision)).rejects.toBeInstanceOf(ActionConflictError);
+    expect((await db.project.findUniqueOrThrow({where:{id:project.id}})).description).toBe("Alteração mais recente");
+    expect((await listActions(userId,conversationId)).find(a=>a.id===next.message.id)?.status).toBe("pending");
+  });
+  it("does not guess ambiguous names or expose another user's projects", async () => {
+    await db.project.createMany({data:[{userId,name:"Duplicado"},{userId,name:"Duplicado"}]});
+    await expect(proposeProjectEdit({userId,conversationId,message:"editar",query:"Duplicado"})).rejects.toBeInstanceOf(ProjectSelectionError);
+    await expect(proposeProjectEdit({userId:"other",conversationId,message:"editar",query:"Duplicado"})).rejects.toBeInstanceOf(ProjectSelectionError);
   });
 
 });

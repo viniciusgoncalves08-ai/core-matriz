@@ -22,3 +22,12 @@ it("preserves existing task review fields",()=>{
  expect(html).toContain("Confirmar e criar tarefa");
  expect(html).not.toContain("Nome do projeto");
 });
+
+it("shows editing controls and paused/completed options only for an update",()=>{
+ const edit:ActionView={...project,tool:"project.update",projectId:"existing",expectedUpdatedAt:"2026-09-28T00:00:00.000Z",input:{name:"Loja",description:"Plano existente",status:"PAUSED"}};
+ const html=renderToStaticMarkup(<ActionCard action={edit} onUpdate={()=>{}} />);
+ expect(html).toContain("Confirmar alterações");
+ expect(html).toContain("Plano existente");
+ expect(html).toContain("Arquivado");
+ expect(html).not.toContain("Confirmar e criar projeto");
+});

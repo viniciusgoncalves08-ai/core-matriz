@@ -251,5 +251,22 @@ validade de 24 horas, cancelamento e execução transacional idempotente. A ferr
 A proteção impede duplicar a mesma proposta, mas pedidos novos podem criar projetos
 com nomes iguais. Propostas antigas de tarefa continuam compatíveis.
 
-Esta entrega não inclui edição de projetos pelo chat, tarefas automáticas, acompanhamento
-proativo nem notificações. A edição continua disponível na área Projetos.
+A criação não gera tarefas automáticas, acompanhamento proativo nem notificações.
+A edição pelo chat está descrita a seguir.
+
+### Edição de projetos pelo Nexus
+
+Envie `edite o projeto: nome completo` ou `/editar-projeto nome completo`.
+A busca usa nome exato, sem diferenciar maiúsculas/minúsculas, dentro da conta.
+Também aceita o identificador que aparece no endereço da página do projeto.
+Nomes ambíguos não são resolvidos por adivinhação.
+
+O cartão carrega nome, descrição e situação atuais. Edite os campos e confirme.
+O alvo fica fixado na proposta pelo servidor; a confirmação não aceita trocar o ID.
+A execução verifica se o projeto ainda pertence à conta e se não foi alterado desde
+a proposta. Se mudou, nada é sobrescrito: envie um novo pedido para revisar os dados.
+A proposta expira em 24 horas, pode ser cancelada e a repetição da confirmação não
+repete a alteração. A atualização e a auditoria são gravadas na mesma transação.
+
+Concluir/arquivar o projeto não altera tarefas ou objetivos vinculados.
+Este fluxo não envia lembretes nem acompanha o projeto automaticamente.

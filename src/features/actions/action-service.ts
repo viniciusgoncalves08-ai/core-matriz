@@ -1,9 +1,10 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { actionRecord, actionDecision, taskActionInput, projectActionInput, type ConfirmedAction, type ActionView } from "./action-schema";
+import { actionRecord, actionDecision, taskActionInput, projectActionInput, projectUpdateInput, type ConfirmedAction, type ActionView } from "./action-schema";
 
 export class ActionNotFoundError extends Error {}
 export class ActionConflictError extends Error {}
+export class ProjectSelectionError extends Error {}
 const emptyContext = { memories: [], projects: [], tasks: [] };
 function decode(metadata: unknown): ConfirmedAction | null {
   const result = actionRecord.safeParse((metadata as { action?: unknown } | null)?.action);
@@ -21,13 +22,23 @@ export async function proposeTask(params: ProposalParams & { title: string }) {
 export async function proposeProject(params: ProposalParams & { name: string }) {
   return proposeAction(params, { version: 1, tool: "project.create", permission: "CONFIRM", status: "pending", expiresAt: expiry(), input: projectActionInput.parse({ name: params.name }) });
 }
+export async function proposeProjectEdit(params: ProposalParams & { query: string }) {
+  const projects = await db.project.findMany({
+    where: { userId: params.userId, OR: [{ id: params.query }, { name: { equals: params.query, mode: "insensitive" } }] },
+    take: 2, select: { id: true, name: true, description: true, status: true, updatedAt: true },
+  });
+  if (!projects.length) throw new ProjectSelectionError("Não encontrei um projeto com esse nome na sua conta. Confira o nome completo em Projetos.");
+  if (projects.length > 1) throw new ProjectSelectionError("Há mais de um projeto com esse nome. Abra o projeto desejado e envie /editar-projeto seguido do identificador que aparece no final do endereço.");
+  const project = projects[0];
+  return proposeAction(params, { version: 1, tool: "project.update", permission: "CONFIRM", status: "pending", expiresAt: expiry(), projectId: project.id, expectedUpdatedAt: project.updatedAt.toISOString(), input: projectUpdateInput.parse({ name: project.name, description: project.description ?? "", status: project.status }) });
+}
 async function proposeAction(params: ProposalParams, action: ConfirmedAction) {
   return db.$transaction(async tx => {
     if (!await tx.conversation.findFirst({ where: { id: params.conversationId, userId: params.userId }, select: { id: true } })) throw new ActionNotFoundError();
     await tx.message.create({ data: { conversationId: params.conversationId, role: "user", content: params.message } });
     const message = await tx.message.create({ data: {
       conversationId: params.conversationId, role: "assistant",
-      content: action.tool === "project.create" ? "Preparei uma proposta de projeto. Revise nome, descrição e situação no cartão e confirme para salvar. Nenhum projeto foi criado ainda." : "Preparei uma proposta de tarefa. Revise o cartão de ação e confirme para criá-la. Nenhuma tarefa foi criada ainda. Datas mencionadas no título não definem o prazo automaticamente.",
+      content: action.tool === "project.update" ? "Localizei o projeto. Revise as alterações no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "project.create" ? "Preparei uma proposta de projeto. Revise nome, descrição e situação no cartão e confirme para salvar. Nenhum projeto foi criado ainda." : "Preparei uma proposta de tarefa. Revise o cartão de ação e confirme para criá-la. Nenhuma tarefa foi criada ainda. Datas mencionadas no título não definem o prazo automaticamente.",
       metadata: { action, ...(params.agentId ? { agentId: params.agentId, agentName: params.agentName ?? "Nexus" } : {}) },
     } });
     await tx.conversation.update({ where: { id: params.conversationId }, data: { updatedAt: new Date() } });
@@ -38,7 +49,7 @@ async function proposeAction(params: ProposalParams, action: ConfirmedAction) {
 
 export async function listActions(userId: string, conversationId: string) {
   if (!await db.conversation.findFirst({ where: { id: conversationId, userId }, select: { id: true } })) throw new ActionNotFoundError();
-  const rows = await db.message.findMany({ where: { conversationId, role: "assistant", OR: ["task.create", "project.create"].map(tool => ({ metadata: { path: ["action", "tool"], equals: tool } })) }, orderBy: { createdAt: "desc" }, take: 30, select: { id: true, metadata: true } });
+  const rows = await db.message.findMany({ where: { conversationId, role: "assistant", OR: ["task.create", "project.create", "project.update"].map(tool => ({ metadata: { path: ["action", "tool"], equals: tool } })) }, orderBy: { createdAt: "desc" }, take: 30, select: { id: true, metadata: true } });
   return rows.flatMap(row => { const action = decode(row.metadata); return action ? [view(row.id, action)] : []; });
 }
 
@@ -52,6 +63,7 @@ export async function decideAction(userId: string, id: string, raw: unknown) {
     if (decision.decision === "confirm") {
       // The persisted tool determines the input schema, never the caller.
       if (action.tool === "task.create") taskActionInput.parse(decision.input);
+      else if (action.tool === "project.update") projectUpdateInput.parse(decision.input);
       else projectActionInput.parse(decision.input);
     }
     const expired = Date.parse(action.expiresAt) <= Date.now();
@@ -81,9 +93,19 @@ export async function decideAction(userId: string, id: string, raw: unknown) {
       final = { ...action, input, status: "succeeded", projectId: project.id };
       await tx.auditLog.create({ data: { userId, action: "PROJECT_CREATED", entityType: "project", entityId: project.id, tool: action.tool, permission: "CONFIRM", metadata: { requestId: id, authorizedBy: userId } } });
     }
+    if (status === "executing" && decision.decision === "confirm" && action.tool === "project.update") {
+      const input = projectUpdateInput.parse(decision.input);
+      const changed = await tx.project.updateMany({
+        where: { id: action.projectId, userId, updatedAt: new Date(action.expectedUpdatedAt) },
+        data: input,
+      });
+      if (changed.count !== 1) throw new ActionConflictError();
+      final = { ...action, input, status: "succeeded" };
+      await tx.auditLog.create({ data: { userId, action: "PROJECT_UPDATED", entityType: "project", entityId: action.projectId, tool: action.tool, permission: "CONFIRM", metadata: { requestId: id, authorizedBy: userId, before: action.input, after: input } } });
+    }
     await tx.message.update({ where: { id }, data: {
       metadata: { ...metadata, action: final },
-      content: final.status === "succeeded" ? final.tool === "task.create" ? `Tarefa criada após sua confirmação: ${final.input.title}. Consulte-a em Tarefas.` : `Projeto criado após sua confirmação: ${final.input.name}. Consulte-o em Projetos.` : final.status === "cancelled" ? "Proposta cancelada. Nenhum registro foi criado." : "A proposta expirou. Envie um novo pedido.",
+      content: final.status === "succeeded" ? final.tool === "task.create" ? `Tarefa criada após sua confirmação: ${final.input.title}. Consulte-a em Tarefas.` : `Projeto ${final.tool === "project.update" ? "atualizado" : "criado"} após sua confirmação: ${final.input.name}. Consulte-o em Projetos.` : final.status === "cancelled" ? "Proposta cancelada. Nenhuma ação foi executada." : "A proposta expirou. Envie um novo pedido.",
     } });
     await tx.conversation.update({ where: { id: current.conversationId }, data: { updatedAt: new Date() } });
     await tx.auditLog.create({ data: { userId, action: final.status === "succeeded" ? "ACTION_CONFIRMED" : final.status === "cancelled" ? "ACTION_CANCELLED" : "ACTION_EXPIRED", entityType: "conversation", entityId: current.conversationId, tool: action.tool, permission: "CONFIRM", metadata: { requestId: id } } });

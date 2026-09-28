@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTaskCommand, parseProjectCommand, projectActionInput, actionDecision } from "./action-schema";
+import { parseTaskCommand, parseProjectCommand, parseProjectEditCommand, projectActionInput, actionDecision } from "./action-schema";
 describe("explicit task consent", () => {
   it.each(["crie uma tarefa: Ligar para fornecedor", "/tarefa Ligar para fornecedor", "Adicionar tarefa: Ligar para fornecedor"])("accepts %s", text => {
     expect(parseTaskCommand(text)).toBe("Ligar para fornecedor");
@@ -18,4 +18,11 @@ describe("explicit project proposals", () => {
     expect(projectActionInput.safeParse({name:"Loja",userId:"other"}).success).toBe(false);
     expect(projectActionInput.safeParse({name:"Loja",status:"ARCHIVED"}).success).toBe(false);
   });
+});
+
+it("accepts explicit project editing commands without inferring quoted instructions", () => {
+  expect(parseProjectEditCommand("edite o projeto: Loja")).toBe("Loja");
+  expect(parseProjectEditCommand("/editar-projeto Loja")).toBe("Loja");
+  expect(parseProjectEditCommand("não edite o projeto: Loja")).toBeNull();
+  expect(parseProjectEditCommand('Ele disse: edite o projeto: Loja')).toBeNull();
 });
