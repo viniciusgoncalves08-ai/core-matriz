@@ -1,3 +1,4 @@
+import { ProjectSelectionError } from "@/features/actions/action-service";
 import { AIError } from "@/ai/ai-error";
 import { AgentUnavailableError, respondAsNexus } from "./nexus-service";
 export function nexusStreamResponse(params: { userId: string; conversationId: string; message: string; agentId?: string }, requestSignal: AbortSignal) {
@@ -11,7 +12,7 @@ export function nexusStreamResponse(params: { userId: string; conversationId: st
         const result = await respondAsNexus({ ...params, signal, onDelta: text => send({ type: "delta", text }) });
         send({ type: "done", message: result.message });
       } catch (error) {
-        send({ type: "error", error: error instanceof AIError || error instanceof AgentUnavailableError ? error.message : "Não foi possível concluir e salvar a resposta. Consulte o histórico antes de tentar novamente.", code: error instanceof AIError ? error.code : "NEXUS_FAILED" });
+        send({ type: "error", error: error instanceof ProjectSelectionError || error instanceof AIError || error instanceof AgentUnavailableError ? error.message : "Não foi possível concluir e salvar a resposta. Consulte o histórico antes de tentar novamente.", code: error instanceof AIError ? error.code : "NEXUS_FAILED" });
       } finally { if (!controller.signal.aborted) output.close(); }
     },
     cancel() { controller.abort(); },

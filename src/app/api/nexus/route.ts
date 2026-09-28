@@ -1,3 +1,4 @@
+import { ProjectSelectionError } from "@/features/actions/action-service";
 import { nexusStreamResponse } from "@/features/nexus/stream-response";
 import { AIError } from "@/ai/ai-error";
 import { NextResponse } from "next/server";
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof AIError) return NextResponse.json({ error: error.message, code: error.code }, { status: 503 });
-    if (error instanceof AgentUnavailableError) return NextResponse.json({ error: error.message }, { status: 409 });
+    if (error instanceof AgentUnavailableError || error instanceof ProjectSelectionError) return NextResponse.json({ error: error.message }, { status: 409 });
     if (error instanceof SyntaxError) return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Dados inválidos", details: error.flatten() }, { status: 400 });
