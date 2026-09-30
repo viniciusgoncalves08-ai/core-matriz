@@ -71,3 +71,6 @@ separadamente da validação de resposta ao vivo de IA.
 
 ## Resumo do dia
 Home e Nexus consultam tarefas com prazo até hoje, projetos ativos e objetivos próximos/vencidos. Resumo determinístico sem créditos de IA, com data de consulta, fontes internas e limites explícitos. Voz, calendário externo e alertas automáticos continuam pendentes.
+
+## Voz com ativação manual
+Ditado com revisão antes de enviar, leitura da última resposta, interrupção, detecção de suporte e mensagens de erro. Usa capacidades do navegador; não garante operação offline nem suporte universal. Conversação contínua e wake word seguem pendentes. Implementação própria inspirada no conceito do Jarvis, sem incorporar seu código ou mídia.

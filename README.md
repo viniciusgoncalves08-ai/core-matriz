@@ -294,3 +294,6 @@ Envie `lembre que prefiro ler à noite`, `salve na memória: conteúdo` ou `/mem
 
 ### Resumo do dia
 A Home mostra tarefas abertas atrasadas ou com prazo hoje, objetivos ativos com prazo vencido ou nos próximos sete dias (hoje e seis dias seguintes), e projetos ACTIVE. Datas seguem Brasília; limites de 6 tarefas, 4 objetivos e 4 projetos são explícitos. No Nexus, `bom dia`, `boa tarde`, `boa noite` ou `resumo do dia` consultam os mesmos dados sem chamar IA, salvando o resumo datado na conversa e auditoria. Não há notificações, voz ou integrações externas neste fluxo. Falha de consulta não é apresentada como ausência de dados.
+
+### Voz no Nexus
+Os controles Ditar mensagem e Ouvir última resposta usam as APIs de voz do navegador, com pt-BR. O ditado preenche o rascunho para revisão; nunca envia automaticamente. O microfone só inicia por clique, para após resultado/erro/30 segundos e ao ocultar a página. Leitura pode ser interrompida e limita o texto a 6.000 caracteres e três minutos. Sem wake word, escuta em segundo plano ou nova API paga. O navegador pode processar áudio em serviços remotos próprios; disponibilidade, vozes e conectividade dependem do dispositivo. Sem suporte, o chat de texto continua funcionando. Áudio real exige verificação no dispositivo do usuário.
