@@ -291,3 +291,6 @@ memórias nesta versão; cadastro/correção/bloqueio continuam na área Memóri
 
 ### Memória pelo Nexus
 Envie `lembre que prefiro ler à noite`, `salve na memória: conteúdo` ou `/memoria conteúdo`. Revise o texto e a classificação no cartão e confirme. A proposta expira em 24 horas; cancelamento não grava memória. O salvamento é transacional e idempotente por proposta, com conversa de origem, versão inicial e auditoria. A área Memória permite editar, bloquear e excluir. Este fluxo não extrai fatos automaticamente nem substitui memórias anteriores por similaridade; uma nova proposta pode criar uma memória distinta.
+
+### Resumo do dia
+A Home mostra tarefas abertas atrasadas ou com prazo hoje, objetivos ativos com prazo vencido ou nos próximos sete dias (hoje e seis dias seguintes), e projetos ACTIVE. Datas seguem Brasília; limites de 6 tarefas, 4 objetivos e 4 projetos são explícitos. No Nexus, `bom dia`, `boa tarde`, `boa noite` ou `resumo do dia` consultam os mesmos dados sem chamar IA, salvando o resumo datado na conversa e auditoria. Não há notificações, voz ou integrações externas neste fluxo. Falha de consulta não é apresentada como ausência de dados.
