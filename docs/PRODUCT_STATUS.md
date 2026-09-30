@@ -63,3 +63,8 @@ separadamente da validação de resposta ao vivo de IA.
 - Atividade autenticada: filtros por área/resultado, 25 registros por página, datas em Brasília; erros técnicos e metadata bruta não são exibidos.
 - Criação, edição, bloqueio, desbloqueio e exclusão de memória registram auditoria na mesma transação; nenhum conteúdo privado é duplicado no log.
 - Nenhuma nova API paga, serviço ou migration necessária. Integrações externas avaliadas ficam para etapas posteriores.
+
+## Memória explícita no chat
+- Pedido `lembre que…` ou `salve na memória: …` gera revisão com confirmação.
+- Conteúdo e classificação revisáveis; origem vinculada à conversa, versão inicial, auditoria e confirmação idempotente.
+- Extração automática, detecção de contradições e fusão de duplicatas continuam pendentes.

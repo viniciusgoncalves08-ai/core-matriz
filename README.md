@@ -288,3 +288,6 @@ a conversa de origem e a tratar textos antigos do assistente como histórico, n�
 Nenhum resultado encontrado não significa nenhum dado salvo. A ausência de memória
 estruturada não apaga conversas. Não há extração automática de fatos para a tabela de
 memórias nesta versão; cadastro/correção/bloqueio continuam na área Memória.
+
+### Memória pelo Nexus
+Envie `lembre que prefiro ler à noite`, `salve na memória: conteúdo` ou `/memoria conteúdo`. Revise o texto e a classificação no cartão e confirme. A proposta expira em 24 horas; cancelamento não grava memória. O salvamento é transacional e idempotente por proposta, com conversa de origem, versão inicial e auditoria. A área Memória permite editar, bloquear e excluir. Este fluxo não extrai fatos automaticamente nem substitui memórias anteriores por similaridade; uma nova proposta pode criar uma memória distinta.

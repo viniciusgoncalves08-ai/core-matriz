@@ -20,12 +20,19 @@ export const projectUpdateRecord = projectActionRecord.extend({
   tool: z.literal("project.update"), input: projectUpdateInput,
   projectId: z.string().min(1), expectedUpdatedAt: z.string().datetime(),
 });
-export const actionRecord = z.discriminatedUnion("tool", [taskActionRecord, projectActionRecord, projectUpdateRecord]);
+export const memoryActionInput = z.object({
+  content: z.string().trim().min(2).max(12000),
+  classification: z.enum(["FACT", "PREFERENCE", "DECISION", "HYPOTHESIS", "OBSERVED_PATTERN", "CONTEXT", "KNOWLEDGE", "RESTRICTION", "GOAL"]).default("CONTEXT"),
+}).strict();
+export const memoryActionRecord = taskActionRecord.omit({ tool: true, input: true, taskId: true }).extend({
+  tool: z.literal("memory.create"), input: memoryActionInput, memoryId: z.string().optional(),
+});
+export const actionRecord = z.discriminatedUnion("tool", [taskActionRecord, projectActionRecord, projectUpdateRecord, memoryActionRecord]);
 export type TaskAction = z.infer<typeof taskActionRecord>;
 export type ConfirmedAction = z.infer<typeof actionRecord>;
 export type ActionView = ConfirmedAction & { id: string };
 export const actionDecision = z.discriminatedUnion("decision", [
-  z.object({ decision: z.literal("confirm"), input: z.union([taskActionInput, projectActionInput, projectUpdateInput]) }).strict(),
+  z.object({ decision: z.literal("confirm"), input: z.union([taskActionInput, projectActionInput, projectUpdateInput, memoryActionInput]) }).strict(),
   z.object({ decision: z.literal("cancel") }).strict(),
 ]);
 
@@ -46,4 +53,11 @@ export function parseProjectEditCommand(message: string): string | null {
   const match = message.trim().match(/^(?:\/editar-projeto\s+|(?:edite|editar|atualize|atualizar)\s+(?:o\s+)?projeto\s*:\s*)([^\n]+)$/iu);
   const query = match?.[1]?.trim();
   return query && query.length >= 2 && query.length <= 120 ? query : null;
+}
+
+// A direct user request proposes a memory; only the confirmation endpoint writes it.
+export function parseMemoryCommand(message: string): string | null {
+  const match = message.trim().match(/^(?:\/memoria\s+|(?:salve|guarde|registre)\s+(?:na\s+mem[oó]ria|(?:uma\s+)?mem[oó]ria)\s*:\s*|(?:lembre|lembre-se)\s+(?:de\s+)?que\s+)([\s\S]+)$/iu);
+  const content = match?.[1]?.trim();
+  return content && content.length >= 2 && content.length <= 12000 ? content : null;
 }

@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 
 const categories = { FACT: "Fato", PREFERENCE: "Preferência", DECISION: "Decisão", HYPOTHESIS: "Hipótese", OBSERVED_PATTERN: "Padrão observado", CONTEXT: "Contexto", KNOWLEDGE: "Conhecimento", RESTRICTION: "Restrição", GOAL: "Objetivo" };
 type Category = keyof typeof categories;
-type Memory = { id: string; content: string; summary: string | null; classification: Category; status: string; versions: { id: string; content: string; reason: string | null; createdAt: string }[] };
+type Memory = { id: string; conversationId?: string | null; source?: string | null; content: string; summary: string | null; classification: Category; status: string; versions: { id: string; content: string; reason: string | null; createdAt: string }[] };
 
 export function MemoryManager() {
   const [memories, setMemories] = useState<Memory[]>([]);
@@ -57,6 +57,8 @@ export function MemoryManager() {
     {visible.map(memory => <article className="panel" key={memory.id}>
       <div className="actions"><span className="tag">{categories[memory.classification]}</span><span className="muted">{memory.status === "BLOCKED" ? "Bloqueada · fora do contexto" : memory.status === "ACTIVE" ? "Ativa" : "Substituída"}</span></div>
       <p className="preserve-text">{memory.content}</p>
+      {memory.source && <p className="muted">Origem: {memory.source}</p>}
+      {memory.conversationId && <a href={`/historico/${encodeURIComponent(memory.conversationId)}`}>Ver conversa de origem →</a>}
       <div className="actions">
         <button disabled={busy} onClick={() => { setEditing(memory.id); setContent(memory.content); document.getElementById("memory-content")?.focus(); }}>Editar</button>
         <button disabled={busy} onClick={() => void mutate(`/api/memories/${memory.id}`, "PATCH", { action: memory.status === "BLOCKED" ? "unblock" : "block" })}>{memory.status === "BLOCKED" ? "Desbloquear" : "Bloquear"}</button>

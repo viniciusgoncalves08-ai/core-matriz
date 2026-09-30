@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
-import { proposeTask, proposeProject, proposeProjectEdit, ProjectSelectionError, ActionConflictError, decideAction, listActions, ActionNotFoundError } from "./action-service";
+import { proposeTask, proposeMemory, proposeProject, proposeProjectEdit, ProjectSelectionError, ActionConflictError, decideAction, listActions, ActionNotFoundError } from "./action-service";
 
 describe.skipIf(process.env.ACTION_DB_TESTS !== "true")("task confirmation with real Postgres", () => {
   let userId: string;
@@ -85,6 +85,34 @@ describe.skipIf(process.env.ACTION_DB_TESTS !== "true")("task confirmation with 
     await db.project.createMany({data:[{userId,name:"Duplicado"},{userId,name:"Duplicado"}]});
     await expect(proposeProjectEdit({userId,conversationId,message:"editar",query:"Duplicado"})).rejects.toBeInstanceOf(ProjectSelectionError);
     await expect(proposeProjectEdit({userId:"other",conversationId,message:"editar",query:"Duplicado"})).rejects.toBeInstanceOf(ProjectSelectionError);
+  });
+
+  it("saves a reviewed memory once with provenance, initial version and audit", async () => {
+    const proposal = await proposeMemory({userId,conversationId,message:"lembre que prefiro ler",content:"prefiro ler"});
+    expect(await db.memory.count({where:{userId}})).toBe(0);
+    const decision={decision:"confirm",input:{content:"Prefiro ler à noite",classification:"PREFERENCE"}};
+    await expect(decideAction("other",proposal.message.id,decision)).rejects.toBeInstanceOf(ActionNotFoundError);
+    const [a,b]=await Promise.all([decideAction(userId,proposal.message.id,decision),decideAction(userId,proposal.message.id,decision)]);
+    if(a.tool!=="memory.create" || b.tool!=="memory.create") throw new Error("Wrong tool");
+    expect(a.memoryId).toBe(b.memoryId);
+    expect(await db.memory.count({where:{userId}})).toBe(1);
+    const memory=await db.memory.findUniqueOrThrow({where:{id:a.memoryId},include:{versions:true}});
+    expect(memory).toMatchObject({userId,conversationId,content:"Prefiro ler à noite",classification:"PREFERENCE",status:"ACTIVE"});
+    expect(memory.versions).toHaveLength(1);
+    expect(await db.auditLog.count({where:{userId,action:"MEMORY_CREATED",entityId:a.memoryId}})).toBe(1);
+  });
+  it("does not save cancelled or expired memories or consume mismatched payloads", async () => {
+    const params={userId,conversationId,message:"/memoria hipótese",content:"hipótese"};
+    const id=(await proposeMemory(params)).message.id;
+    await expect(decideAction(userId,id,confirm)).rejects.toThrow();
+    expect((await listActions(userId,conversationId)).find(a=>a.id===id)?.status).toBe("pending");
+    await decideAction(userId,id,{decision:"cancel"});
+    expect((await decideAction(userId,id,{decision:"confirm",input:{content:"Não salvar"}})).status).toBe("cancelled");
+    const expired=(await proposeMemory(params)).message.id;
+    const action=(await listActions(userId,conversationId)).find(a=>a.id===expired)!;
+    await db.message.update({where:{id:expired},data:{metadata:{action:{...action,expiresAt:"2020-01-01T00:00:00.000Z"}}}});
+    expect((await decideAction(userId,expired,{decision:"confirm",input:{content:"Não salvar"}})).status).toBe("expired");
+    expect(await db.memory.count({where:{userId}})).toBe(1);
   });
 
 });
