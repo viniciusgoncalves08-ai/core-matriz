@@ -3,6 +3,7 @@
 import { FormEvent, useState, useRef, useEffect } from "react";
 
 import Link from "next/link";
+import { VoiceControls } from "./voice-controls";
 import { ActionCards } from "@/features/actions/action-cards";
 import { MessageContent } from "./message-content";
 import { recallSources } from "./recall-sources";
@@ -14,6 +15,8 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
   const abort = useRef<AbortController | null>(null);
   const lock = useRef(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const [listening, setListening] = useState(false);
+  const [voiceReset, setVoiceReset] = useState(0);
   const [partial, setPartial] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
   const [input, setInput] = useState("");
@@ -42,7 +45,7 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
   async function submit(event: FormEvent) {
     event.preventDefault();
     const message = input.trim();
-    if (!message || lock.current) return;
+    if (!message || lock.current || listening) return;
     lock.current = true;
     abort.current = new AbortController();
     setPartial("");
@@ -80,7 +83,7 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
 
   return (
     <div className="chat-wrap">
-      <div className="actions"><Link href={agentId ? `/agentes/${agentId}` : "/nexus"} onClick={event => { if (loading) { event.preventDefault(); return; } setConversationId(null); setMessages([]); setPartial(""); setError(null); setInput(""); }}>Nova conversa</Link><Link href="/historico">Histórico</Link></div>
+      <div className="actions"><Link href={agentId ? `/agentes/${agentId}` : "/nexus"} onClick={event => { if (loading) { event.preventDefault(); return; } setVoiceReset(v => v + 1); setConversationId(null); setMessages([]); setPartial(""); setError(null); setInput(""); }}>Nova conversa</Link><Link href="/historico">Histórico</Link></div>
       {messages.length > 0 && (
         <div className="chat-messages">
           {messages.map((message, index) => (
@@ -98,16 +101,17 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
       {error && <p role="alert" className="chat-error">{error}</p>}
       {loading && <div className="actions" role="status"><span className="muted">{partial ? "Recebendo resposta…" : "Preparando resposta…"}</span><button type="button" onClick={() => abort.current?.abort()}>Interromper</button></div>}
       <p className="muted action-hint">Para propor uma tarefa, envie: <code>crie uma tarefa: ligar para o fornecedor</code>. Para projetos: <code>crie um projeto: expansão da loja</code>. Para editar: <code>edite o projeto: nome completo</code>. Para memória: <code>lembre que prefiro ler à noite</code>. Você revisa e confirma antes de salvar.</p>
+      <VoiceControls draft={input} onDraft={setInput} onListening={setListening} response={[...messages].reverse().find(m => m.role === "assistant")?.content ?? ""} busy={loading} resetKey={voiceReset} />
       <form className="composer" onSubmit={submit}>
         <textarea
           aria-label={`Mensagem para ${agentName}`}
           placeholder={`Fale com ${agentName}...`}
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          disabled={loading}
+          disabled={loading || listening}
           maxLength={12000}
         />
-        <button type="submit" disabled={loading || !input.trim()}>{loading ? "Respondendo…" : "Enviar"}</button>
+        <button type="submit" disabled={loading || listening || !input.trim()}>{loading ? "Respondendo…" : "Enviar"}</button>
       </form>
     </div>
   );
