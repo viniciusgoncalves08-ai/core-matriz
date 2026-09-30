@@ -1,3 +1,4 @@
+import { isDailyBriefRequest, respondWithDailyBrief } from "@/features/home/daily-brief";
 import { RECALL_POLICY } from "@/features/context/conversation-recall";
 import { parseMemoryCommand, parseTaskCommand, parseProjectCommand, parseProjectEditCommand } from "@/features/actions/action-schema";
 import { proposeMemory, proposeTask, proposeProject, proposeProjectEdit } from "@/features/actions/action-service";
@@ -37,6 +38,11 @@ export async function respondAsNexus(params: {
   });
   if (params.agentId && !agent) throw new AgentUnavailableError("Agente não encontrado.");
   if (agent && agent.status !== "ACTIVE") throw new AgentUnavailableError("Este agente está pausado ou desativado. Ative-o em Agentes para conversar.");
+
+  if (isDailyBriefRequest(params.message)) {
+    if (params.signal?.aborted) throw new AIError("AI_CANCELLED");
+    return respondWithDailyBrief({ ...params, agentId: agent?.id });
+  }
 
   const memoryContent = parseMemoryCommand(params.message);
   if (memoryContent) {
