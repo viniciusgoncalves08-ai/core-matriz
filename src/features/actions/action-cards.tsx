@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { MemoryActionCard } from "./memory-action-card";
 import type { ActionView } from "./action-schema";
 
 export function ActionCards({ conversationId, refresh }: { conversationId: string; refresh: number }) {
@@ -29,6 +30,10 @@ export function ActionCards({ conversationId, refresh }: { conversationId: strin
   </section>;
 }
 export function ActionCard({ action, onUpdate }: { action: ActionView; onUpdate: (action: ActionView) => void }) {
+  if (action.tool === "memory.create") return <MemoryActionCard action={action} onUpdate={onUpdate} />;
+  return <OrganizationActionCard action={action} onUpdate={onUpdate} />;
+}
+function OrganizationActionCard({ action, onUpdate }: { action: Exclude<ActionView, { tool: "memory.create" }>; onUpdate: (action: ActionView) => void }) {
   const isProject = action.tool !== "task.create";
   const isEdit = action.tool === "project.update";
   const [title, setTitle] = useState(action.tool === "task.create" ? action.input.title : action.input.name);
