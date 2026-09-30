@@ -6,18 +6,21 @@ type Recognition = {
   onstart: (() => void) | null; onend: (() => void) | null;
   onerror: ((event: { error: string }) => void) | null;
   onresult: ((event: { results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null;
-  start(): void; abort(): void;
+  start(): void; stop(): void; abort(): void;
 };
 type VoiceWindow = Window & { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
-export function VoiceControls({ draft, onDraft, onListening, response, busy, resetKey }: { draft: string; onDraft: (text: string) => void; onListening: (active: boolean) => void; response: string; busy: boolean; resetKey: number }) {
+export function VoiceControls({ draft, onDraft, onListening, response, busy, resetKey, onState }: { draft: string; onDraft: (text: string) => void; onListening: (active: boolean) => void; response: string; busy: boolean; resetKey: number; onState?: (state: string) => void }) {
   const [available, setAvailable] = useState({ recognition: false, speech: false });
   const [state, setState] = useState<"idle" | "starting" | "listening" | "speaking">("idle");
+  const [transcript, setTranscript] = useState("");
+  const heard = useRef("");
   const [error, setError] = useState("");
   const recognition = useRef<Recognition | null>(null);
   const utterance = useRef<SpeechSynthesisUtterance | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const callbacks = useRef({ onDraft, onListening });
   callbacks.current = { onDraft, onListening };
+  useEffect(() => { onState?.(state); }, [state, onState]);
   function stop() {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
@@ -36,21 +39,27 @@ export function VoiceControls({ draft, onDraft, onListening, response, busy, res
   useEffect(() => { stop(); }, [resetKey, busy]);
   function listen() {
     if (busy || recognition.current) return;
-    stop(); setError("");
+    stop(); setError(""); setTranscript(""); heard.current = "";
     const Constructor = (window as VoiceWindow).SpeechRecognition || (window as VoiceWindow).webkitSpeechRecognition;
     if (!Constructor) return;
     const r = new Constructor(); recognition.current = r;
-    r.lang = "pt-BR"; r.continuous = false; r.interimResults = false;
+    r.lang = "pt-BR"; r.continuous = false; r.interimResults = true;
     callbacks.current.onListening(true); setState("starting");
     r.onstart = () => setState("listening");
-    r.onresult = event => {
-      const text = Array.from(event.results).filter(result => result.isFinal).map(result => result[0].transcript).join(" ");
-      if (text) callbacks.current.onDraft(appendDictation(draft, text));
+    const finish = () => {
+      const text = heard.current.trim();
+      if (text) { callbacks.current.onDraft(appendDictation(draft, text)); setTranscript(""); }
+      else setError("A escuta terminou sem reconhecer palavras. Abra o site diretamente no Chrome, confira a permissão do microfone e tente novamente. Você também pode usar o microfone do teclado.");
       stop();
     };
+    r.onresult = event => {
+      heard.current = Array.from(event.results).map(result => result[0].transcript).join(" ");
+      setTranscript(heard.current);
+      if (Array.from(event.results).every(result => result.isFinal)) finish();
+    };
     r.onerror = event => { setError(recognitionError(event.error)); stop(); };
-    r.onend = () => stop();
-    timer.current = setTimeout(() => { stop(); setError("Tempo de escuta encerrado. Toque em Ditar para tentar novamente."); }, 30000);
+    r.onend = finish;
+    timer.current = setTimeout(finish, 30000);
     try { r.start(); } catch { stop(); setError("Não foi possível iniciar o microfone. Continue digitando."); }
   }
   function speak() {
@@ -70,11 +79,12 @@ export function VoiceControls({ draft, onDraft, onListening, response, busy, res
     try { window.speechSynthesis.speak(u); } catch { stop(); setError("Voz indisponível neste navegador."); }
   }
   return <section className="voice-controls" aria-label="Controles de voz">
-    <div className="actions"><button type="button" disabled={busy || !available.recognition || state !== "idle"} onClick={listen}>Ditar mensagem</button><button type="button" disabled={busy || !available.speech || !response || state !== "idle"} onClick={speak}>Ouvir última resposta</button>{state !== "idle" && <button type="button" onClick={stop}>Parar voz</button>}</div>
+    <div className="actions"><button type="button" disabled={busy || !available.recognition || state !== "idle"} onClick={listen}>Ditar mensagem</button><button type="button" disabled={busy || !available.speech || !response || state !== "idle"} onClick={speak}>Ouvir última resposta</button>{state !== "idle" && <button type="button" onClick={() => { if (recognition.current) recognition.current.stop(); else stop(); }}>Concluir / parar voz</button>}</div>
     <p role="status" className="muted">{state === "listening" ? "Ouvindo…" : state === "speaking" ? "Lendo resposta…" : state === "starting" ? "Iniciando áudio…" : "Voz desligada. Revise o texto ditado e toque em Enviar."}</p>
+    {transcript && <p className="voice-transcript" role="status">Estou entendendo: {transcript}</p>}
     {!available.recognition && <p className="muted">Ditado indisponível neste navegador. Você pode usar o microfone do teclado.</p>}
     {!available.speech && <p className="muted">Leitura em voz indisponível neste navegador.</p>}
-    <small className="muted">O navegador pode enviar áudio ao serviço de reconhecimento dele. O Core Matriz recebe o texto quando você envia. Leitura limitada a 6.000 caracteres.</small>
+    <details className="voice-help"><summary>Microfone e privacidade</summary><p>Se não ouvir você, abra este endereço diretamente no Chrome, permita o microfone nas configurações do site e confira se outro aplicativo está usando o áudio. Navegadores dentro de outros aplicativos podem não oferecer ditado.</p><small className="muted">O navegador pode enviar áudio ao serviço de reconhecimento dele. O Core Matriz recebe o texto quando você envia. Leitura limitada a 6.000 caracteres.</small></details>
     {error && <p role="alert" className="chat-error">{error}</p>}
   </section>;
 }

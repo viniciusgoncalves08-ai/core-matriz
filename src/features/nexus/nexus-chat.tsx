@@ -15,6 +15,7 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
   const abort = useRef<AbortController | null>(null);
   const lock = useRef(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const [voiceState, setVoiceState] = useState("idle");
   const [listening, setListening] = useState(false);
   const [voiceReset, setVoiceReset] = useState(0);
   const [partial, setPartial] = useState("");
@@ -82,7 +83,13 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
   }
 
   return (
-    <div className="chat-wrap">
+    <div className="chat-wrap nexus-cockpit" data-phase={loading ? "thinking" : voiceState}>
+      <div className="nexus-core-stage">
+        <div className="nexus-core" aria-hidden="true"><i /><i /><i /><div className="core-center">N</div></div>
+        <span className="core-caption">{agentName}</span>
+        <p className="core-status" role="status">{loading ? "Organizando sua resposta" : voiceState === "listening" ? "Ouvindo você" : voiceState === "speaking" ? "Falando com você" : voiceState === "starting" ? "Conectando áudio" : "Pronto para conversar"}</p>
+      </div>
+      {messages.length === 0 && <div className="nexus-starters" aria-label="Começar conversa">{[["Seu dia", "resumo do dia", "Prazos e prioridades"], ["Sua memória", "O que você sabe sobre mim?", "Contexto que acompanha você"], ["Próximo passo", "Me ajude a organizar meus projetos", "Transforme ideias em direção"]].map(([title, prompt, description]) => <button type="button" disabled={loading || listening} key={title} onClick={() => setInput(prompt)}><span>{title}</span><small>{description}</small><b aria-hidden="true">↗</b></button>)}</div>}
       <div className="actions"><Link href={agentId ? `/agentes/${agentId}` : "/nexus"} onClick={event => { if (loading) { event.preventDefault(); return; } setVoiceReset(v => v + 1); setConversationId(null); setMessages([]); setPartial(""); setError(null); setInput(""); }}>Nova conversa</Link><Link href="/historico">Histórico</Link></div>
       {messages.length > 0 && (
         <div className="chat-messages">
@@ -100,8 +107,8 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
       {conversationId && <ActionCards key={conversationId} conversationId={conversationId} refresh={messages.length} />}
       {error && <p role="alert" className="chat-error">{error}</p>}
       {loading && <div className="actions" role="status"><span className="muted">{partial ? "Recebendo resposta…" : "Preparando resposta…"}</span><button type="button" onClick={() => abort.current?.abort()}>Interromper</button></div>}
-      <p className="muted action-hint">Para propor uma tarefa, envie: <code>crie uma tarefa: ligar para o fornecedor</code>. Para projetos: <code>crie um projeto: expansão da loja</code>. Para editar: <code>edite o projeto: nome completo</code>. Para memória: <code>lembre que prefiro ler à noite</code>. Você revisa e confirma antes de salvar.</p>
-      <VoiceControls draft={input} onDraft={setInput} onListening={setListening} response={[...messages].reverse().find(m => m.role === "assistant")?.content ?? ""} busy={loading} resetKey={voiceReset} />
+      <details className="nexus-command-help"><summary>O que posso pedir ao Nexus?</summary><p className="muted action-hint">Para propor uma tarefa, envie: <code>crie uma tarefa: ligar para o fornecedor</code>. Para projetos: <code>crie um projeto: expansão da loja</code>. Para editar: <code>edite o projeto: nome completo</code>. Para memória: <code>lembre que prefiro ler à noite</code>. Você revisa e confirma antes de salvar.</p></details>
+      <VoiceControls onState={setVoiceState} draft={input} onDraft={setInput} onListening={setListening} response={[...messages].reverse().find(m => m.role === "assistant")?.content ?? ""} busy={loading} resetKey={voiceReset} />
       <form className="composer" onSubmit={submit}>
         <textarea
           aria-label={`Mensagem para ${agentName}`}
