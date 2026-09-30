@@ -1,11 +1,11 @@
-export async function readNexusResponse(body: ReadableStream<Uint8Array>, onDelta: (text: string) => void): Promise<string> {
+export async function readNexusResponse(body: ReadableStream<Uint8Array>, onDelta: (text: string) => void, onMetadata?: (metadata: unknown) => void): Promise<string> {
   const reader = body.getReader(); const decoder = new TextDecoder(); let buffer = "", result: string | null = null;
   function line(value: string) {
     if (!value.trim()) return;
     const event = JSON.parse(value);
     if (event.type === "error") throw new Error(event.error);
     if (event.type === "delta" && typeof event.text === "string") onDelta(event.text);
-    if (event.type === "done" && typeof event.message?.content === "string") result = event.message.content;
+    if (event.type === "done" && typeof event.message?.content === "string") { result = event.message.content; onMetadata?.(event.message.metadata); }
   }
   try {
     while (result === null) {

@@ -1,13 +1,15 @@
+import { expandRecallTerms, recallConversations, type ConversationExcerpt } from "./conversation-recall";
 import { db } from "@/lib/db";
 
 export type NexusContext = {
+  conversations?: ConversationExcerpt[];
   memories: Array<{ id: string; summary: string | null; content: string; classification: string; source?: string | null; confidence?: number }>;
   projects: Array<{ id: string; name: string; description: string | null; status: string }>;
   goals?: Array<{ id: string; title: string; description: string | null; status: string; progress: number; dueAt: Date | null; projectId: string | null }>;
   tasks: Array<{ id: string; title: string; status: string; dueAt: Date | null }>;
 };
 
-const STOP_WORDS = new Set(["para", "sobre", "como", "qual", "quais", "quero", "preciso", "pode", "poderia", "voce", "você", "meus", "minhas", "esse", "essa", "isso", "estou", "tenho", "ajude", "favor", "está", "esta", "olá", "ola"]);
+const STOP_WORDS = new Set(["para", "sobre", "como", "qual", "quais", "quero", "preciso", "pode", "poderia", "voce", "você", "meus", "minhas", "esse", "essa", "isso", "estou", "tenho", "ajude", "favor", "está", "esta", "olá", "ola", "lembra", "lembro", "lembre", "lembre-se", "memória", "memoria", "memórias", "memorias", "conversamos", "falamos", "conversa", "conversas", "anterior", "anteriores", "histórico", "historico", "sabe", "salvo", "registrado", "ainda", "disse", "tinha", "nosso", "nossa", "nossos", "nossas", "lembrese"]);
 
 export function extractContextTerms(message: string): string[] {
   return [...new Set(
@@ -19,10 +21,13 @@ export function extractContextTerms(message: string): string[] {
   )].slice(0, 8);
 }
 
-export async function buildContext(userId: string, message: string): Promise<NexusContext> {
-  const terms = extractContextTerms(message);
-
-  if (!terms.length) return { memories: [], projects: [], tasks: [], goals: [] };
+export async function buildContext(userId: string, message: string, options: { recentUserMessages?: string[]; excludeMessageIds?: string[] } = {}): Promise<NexusContext> {
+  const ownTerms = extractContextTerms(message);
+  const profileRequest = /(?:o que.*(?:sabe|lembra).*mim|minhas mem[oó]rias)/iu.test(message);
+  const followUp = /(?:isso|esse|essa|lembra|lembro|anterior|aquele|aquela|plano)/iu.test(message);
+  const meaningful = ownTerms.filter(term => !["plano", "aquele", "aquela", "disso"].includes(term));
+  const terms = expandRecallTerms(meaningful.length ? ownTerms : followUp ? (options.recentUserMessages ?? []).slice(-3).flatMap(extractContextTerms).filter(term => !["plano", "aquele", "aquela", "disso"].includes(term)).slice(0, 8) : ownTerms);
+  if (!terms.length && !profileRequest) return { memories: [], projects: [], tasks: [], goals: [] };
   const now = new Date();
   const projectTerms = terms.filter(term => !["projeto", "projetos"].includes(term));
   const goalTerms = terms.filter(term => !["objetivo", "objetivos", "meta", "metas"].includes(term));
@@ -32,7 +37,7 @@ export async function buildContext(userId: string, message: string): Promise<Nex
     { summary: { contains: term, mode: "insensitive" as const } },
   ]);
 
-  const [memories, projects, tasks, goals] = await Promise.all([
+  const [memories, projects, tasks, goals, conversations] = await Promise.all([
     db.memory.findMany({
       where: {
         userId,
@@ -45,7 +50,7 @@ export async function buildContext(userId: string, message: string): Promise<Nex
       take: 8,
       select: { id: true, summary: true, content: true, classification: true, source: true, confidence: true },
     }),
-    db.project.findMany({
+    terms.length ? db.project.findMany({
       where: {
         userId,
         status: { in: ["IDEA", "PLANNING", "ACTIVE", "PAUSED"] },
@@ -56,32 +61,33 @@ export async function buildContext(userId: string, message: string): Promise<Nex
       orderBy: { updatedAt: "desc" },
       take: 5,
       select: { id: true, name: true, description: true, status: true },
-    }),
-    db.task.findMany({
+    }) : Promise.resolve([]),
+    terms.length ? db.task.findMany({
       where: { userId, status: { in: ["INBOX", "TODO", "IN_PROGRESS", "BLOCKED"] }, ...(taskTerms.length ? { OR: taskTerms.map(term => ({ title: { contains: term, mode: "insensitive" as const } })) } : {}) },
       orderBy: [{ priority: "desc" }, { dueAt: "asc" }],
       take: 8,
       select: { id: true, title: true, status: true, dueAt: true },
-    }),
-    db.goal.findMany({
+    }) : Promise.resolve([]),
+    terms.length ? db.goal.findMany({
       where: { userId, status: { in: ["active", "paused"] }, ...(goalTerms.length ? { OR: goalTerms.flatMap(term => [{ title: { contains: term, mode: "insensitive" as const } }, { description: { contains: term, mode: "insensitive" as const } }, { category: { contains: term, mode: "insensitive" as const } }]) } : {}) },
       orderBy: { updatedAt: "desc" }, take: 5,
       select: { id: true, title: true, description: true, status: true, progress: true, dueAt: true, projectId: true },
-    }),
+    }) : Promise.resolve([]),
+    recallConversations(userId, terms.filter(term => !["projeto", "projetos", "tarefa", "tarefas", "objetivo", "objetivos", "meta", "metas"].includes(term)), options.excludeMessageIds),
   ]);
 
-  return { memories, projects, tasks, goals };
+  return { memories, projects, tasks, goals, conversations };
 }
 
 export function serializeContext(context: NexusContext): string {
   // Budget is measured on serialized characters (not an exact token count).
-  const bounded: NexusContext = { memories: [], projects: [], tasks: [], goals: [] };
-  for (const key of ["memories", "projects", "tasks", "goals"] as const) {
+  const bounded: NexusContext = { memories: [], projects: [], tasks: [], goals: [], conversations: [] };
+  for (const key of ["memories", "conversations", "projects", "tasks", "goals"] as const) {
     for (const item of context[key] ?? []) {
       const candidate = Object.fromEntries(Object.entries(item).map(([name, value]) =>
-        [name, typeof value === "string" ? value.slice(0, 1200) : value]));
+        [name, typeof value === "string" ? value.slice(0, 900) : value]));
       const trial = { ...bounded, [key]: [...(bounded[key] ?? []), candidate] };
-      if (JSON.stringify(trial[key]).length <= 2950 && JSON.stringify(trial).length <= 12000) Object.assign(bounded, trial);
+      if (JSON.stringify(trial[key]).length <= (key === "conversations" ? 3300 : 2100) && JSON.stringify(trial).length <= 12000) Object.assign(bounded, trial);
     }
   }
   return JSON.stringify(bounded);
