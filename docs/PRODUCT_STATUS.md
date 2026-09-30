@@ -74,3 +74,6 @@ Home e Nexus consultam tarefas com prazo até hoje, projetos ativos e objetivos 
 
 ## Voz com ativação manual
 Ditado com revisão antes de enviar, leitura da última resposta, interrupção, detecção de suporte e mensagens de erro. Usa capacidades do navegador; não garante operação offline nem suporte universal. Conversação contínua e wake word seguem pendentes. Implementação própria inspirada no conceito do Jarvis, sem incorporar seu código ou mídia.
+
+## Interface Nexus
+Esfera central leve em CSS, estados reais de resposta/voz, cartões que preenchem o rascunho, layout mobile e respeito a movimento reduzido. Ditado mostra transcrição provisória e preserva texto ao encerrar. Encerramento sem reconhecimento exibe orientação em vez de falhar silenciosamente. Nenhuma escuta automática ou nova integração externa.
