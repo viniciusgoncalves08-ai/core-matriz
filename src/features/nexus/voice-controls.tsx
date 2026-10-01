@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { chooseVoice, loadVoicePreferences } from "./voice-preferences";
 import { appendDictation, recognitionError, spokenText } from "./voice-text";
 type Recognition = {
   lang: string; continuous: boolean; interimResults: boolean;
@@ -69,7 +70,9 @@ export function VoiceControls({ draft, onDraft, onListening, response, busy, res
     if (!text) return;
     const u = new SpeechSynthesisUtterance(text); utterance.current = u;
     u.lang = "pt-BR";
-    const voice = window.speechSynthesis.getVoices().find(v => v.lang.toLowerCase() === "pt-br");
+    const preferences = loadVoicePreferences();
+    u.rate = preferences.rate; u.pitch = preferences.pitch;
+    const voice = chooseVoice(window.speechSynthesis.getVoices(), preferences);
     if (voice) u.voice = voice;
     setState("starting");
     u.onstart = () => setState("speaking");
@@ -84,6 +87,7 @@ export function VoiceControls({ draft, onDraft, onListening, response, busy, res
     {transcript && <p className="voice-transcript" role="status">Estou entendendo: {transcript}</p>}
     {!available.recognition && <p className="muted">Ditado indisponível neste navegador. Você pode usar o microfone do teclado.</p>}
     {!available.speech && <p className="muted">Leitura em voz indisponível neste navegador.</p>}
+    <a href="/configuracoes" className="voice-settings-link">Escolher voz e velocidade →</a>
     <details className="voice-help"><summary>Microfone e privacidade</summary><p>Se não ouvir você, abra este endereço diretamente no Chrome, permita o microfone nas configurações do site e confira se outro aplicativo está usando o áudio. Navegadores dentro de outros aplicativos podem não oferecer ditado.</p><small className="muted">O navegador pode enviar áudio ao serviço de reconhecimento dele. O Core Matriz recebe o texto quando você envia. Leitura limitada a 6.000 caracteres.</small></details>
     {error && <p role="alert" className="chat-error">{error}</p>}
   </section>;

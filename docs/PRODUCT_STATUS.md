@@ -77,3 +77,6 @@ Ditado com revisão antes de enviar, leitura da última resposta, interrupção,
 
 ## Interface Nexus
 Esfera central leve em CSS, estados reais de resposta/voz, cartões que preenchem o rascunho, layout mobile e respeito a movimento reduzido. Ditado mostra transcrição provisória e preserva texto ao encerrar. Encerramento sem reconhecimento exibe orientação em vez de falhar silenciosamente. Nenhuma escuta automática ou nova integração externa.
+
+## Escolha da voz
+Configurações permite escolher vozes realmente disponíveis no navegador, ajustar velocidade/tom, testar e salvar localmente. A leitura do Nexus usa essas preferências; voz ausente usa português disponível. Preferências não sincronizam entre dispositivos. Não inclui serviço externo de voz neural.
