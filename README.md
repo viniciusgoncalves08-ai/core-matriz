@@ -297,3 +297,5 @@ A Home mostra tarefas abertas atrasadas ou com prazo hoje, objetivos ativos com 
 
 ### Voz no Nexus
 Os controles Ditar mensagem e Ouvir última resposta usam as APIs de voz do navegador, com pt-BR. O ditado preenche o rascunho para revisão; nunca envia automaticamente. O microfone só inicia por clique, para após resultado/erro/30 segundos e ao ocultar a página. Leitura pode ser interrompida e limita o texto a 6.000 caracteres e três minutos. Sem wake word, escuta em segundo plano ou nova API paga. O navegador pode processar áudio em serviços remotos próprios; disponibilidade, vozes e conectividade dependem do dispositivo. Sem suporte, o chat de texto continua funcionando. Áudio real exige verificação no dispositivo do usuário.
+
+Em Configurações, escolha uma voz do navegador, velocidade e tom, com prévia. Preferências ficam neste navegador (não sincronizadas entre aparelhos). Se a voz selecionada desaparecer, a leitura volta a uma opção em português disponível. Voz neural personalizada de terceiros ainda não está integrada.
