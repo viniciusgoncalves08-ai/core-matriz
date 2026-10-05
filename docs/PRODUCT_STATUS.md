@@ -80,3 +80,6 @@ Esfera central leve em CSS, estados reais de resposta/voz, cartões que preenche
 
 ## Escolha da voz
 Configurações permite escolher vozes realmente disponíveis no navegador, ajustar velocidade/tom, testar e salvar localmente. A leitura do Nexus usa essas preferências; voz ausente usa português disponível. Preferências não sincronizam entre dispositivos. Não inclui serviço externo de voz neural.
+
+### Edição de tarefas pelo Nexus
+Envie `edite a tarefa: título completo` ou `/editar-tarefa título completo`. O cartão permite revisar título, prazo, prioridade e situação (incluindo concluída). Só a confirmação salva, com auditoria, isolamento por usuário, execução única e proteção contra alterações posteriores à proposta. Títulos duplicados exigem diferenciação na página Tarefas. Não ativa notificações.
