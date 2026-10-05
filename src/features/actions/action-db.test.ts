@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
-import { proposeTask, proposeMemory, proposeProject, proposeProjectEdit, ProjectSelectionError, ActionConflictError, decideAction, listActions, ActionNotFoundError } from "./action-service";
+import { proposeTaskEdit, proposeTask, proposeMemory, proposeProject, proposeProjectEdit, ProjectSelectionError, ActionConflictError, decideAction, listActions, ActionNotFoundError } from "./action-service";
 
 describe.skipIf(process.env.ACTION_DB_TESTS !== "true")("task confirmation with real Postgres", () => {
   let userId: string;
@@ -113,6 +113,28 @@ describe.skipIf(process.env.ACTION_DB_TESTS !== "true")("task confirmation with 
     await db.message.update({where:{id:expired},data:{metadata:{action:{...action,expiresAt:"2020-01-01T00:00:00.000Z"}}}});
     expect((await decideAction(userId,expired,{decision:"confirm",input:{content:"Não salvar"}})).status).toBe("expired");
     expect(await db.memory.count({where:{userId}})).toBe(1);
+  });
+
+  it("updates a task once after consent and prevents stale updates and cross-user edits", async () => {
+    const task=await db.task.create({data:{userId,title:"Task update target",status:"TODO"}});
+    const params={userId,conversationId,message:"editar tarefa",query:task.id};
+    const proposal=await proposeTaskEdit(params);
+    expect((await db.task.findUniqueOrThrow({where:{id:task.id}})).status).toBe("TODO");
+    const decision={decision:"confirm",input:{title:task.title,dueAt:"2026-12-20",priority:3,status:"COMPLETED"}};
+    await expect(decideAction("other",proposal.message.id,decision)).rejects.toBeInstanceOf(ActionNotFoundError);
+    const results=await Promise.all([decideAction(userId,proposal.message.id,decision),decideAction(userId,proposal.message.id,decision)]);
+    expect(results.every(r=>r.status==="succeeded")).toBe(true);
+    expect(await db.task.findUniqueOrThrow({where:{id:task.id}})).toMatchObject({status:"COMPLETED",priority:3,dueAt:new Date("2026-12-20T00:00:00.000Z")});
+    expect(await db.auditLog.count({where:{entityId:task.id,action:"TASK_UPDATED"}})).toBe(1);
+    const stale=await proposeTaskEdit(params);
+    await db.task.update({where:{id:task.id},data:{title:"Newer title",updatedAt:new Date(Date.now()+1000)}});
+    await expect(decideAction(userId,stale.message.id,decision)).rejects.toBeInstanceOf(ActionConflictError);
+    expect((await listActions(userId,conversationId)).find(a=>a.id===stale.message.id)?.status).toBe("pending");
+    await decideAction(userId,stale.message.id,{decision:"cancel"});
+    expect((await decideAction(userId,stale.message.id,decision)).status).toBe("cancelled");
+    await expect(proposeTaskEdit({...params,userId:"other"})).rejects.toBeInstanceOf(ProjectSelectionError);
+    await db.task.createMany({data:[{userId,title:"Duplicate task"},{userId,title:"Duplicate task"}]});
+    await expect(proposeTaskEdit({...params,query:"Duplicate task"})).rejects.toBeInstanceOf(ProjectSelectionError);
   });
 
 });

@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { actionRecord, actionDecision, memoryActionInput, taskActionInput, projectActionInput, projectUpdateInput, type ConfirmedAction, type ActionView } from "./action-schema";
+import { actionRecord, actionDecision, taskUpdateInput, memoryActionInput, taskActionInput, projectActionInput, projectUpdateInput, type ConfirmedAction, type ActionView } from "./action-schema";
 
 export class ActionNotFoundError extends Error {}
 export class ActionConflictError extends Error {}
@@ -35,13 +35,23 @@ export async function proposeProjectEdit(params: ProposalParams & { query: strin
   const project = projects[0];
   return proposeAction(params, { version: 1, tool: "project.update", permission: "CONFIRM", status: "pending", expiresAt: expiry(), projectId: project.id, expectedUpdatedAt: project.updatedAt.toISOString(), input: projectUpdateInput.parse({ name: project.name, description: project.description ?? "", status: project.status }) });
 }
+export async function proposeTaskEdit(params: ProposalParams & { query: string }) {
+  const tasks = await db.task.findMany({
+    where: { userId: params.userId, OR: [{ id: params.query }, { title: { equals: params.query, mode: "insensitive" } }] },
+    take: 2, select: { id: true, title: true, dueAt: true, priority: true, status: true, updatedAt: true },
+  });
+  if (!tasks.length) throw new ProjectSelectionError("Não encontrei uma tarefa com esse título na sua conta. Confira o título completo em Tarefas.");
+  if (tasks.length > 1) throw new ProjectSelectionError("Há mais de uma tarefa com esse título. Diferencie os títulos em Tarefas e envie o pedido novamente.");
+  const task = tasks[0];
+  return proposeAction(params, { version: 1, tool: "task.update", permission: "CONFIRM", status: "pending", expiresAt: expiry(), taskId: task.id, expectedUpdatedAt: task.updatedAt.toISOString(), input: taskUpdateInput.parse({ title: task.title, dueAt: task.dueAt?.toISOString().slice(0, 10) ?? null, priority: task.priority, status: task.status }) });
+}
 async function proposeAction(params: ProposalParams, action: ConfirmedAction) {
   return db.$transaction(async tx => {
     if (!await tx.conversation.findFirst({ where: { id: params.conversationId, userId: params.userId }, select: { id: true } })) throw new ActionNotFoundError();
     await tx.message.create({ data: { conversationId: params.conversationId, role: "user", content: params.message } });
     const message = await tx.message.create({ data: {
       conversationId: params.conversationId, role: "assistant",
-      content: action.tool === "memory.create" ? "Preparei uma memória para revisão. Confira o conteúdo e a classificação no cartão e confirme para salvar. A memória ainda não foi gravada." : action.tool === "project.update" ? "Localizei o projeto. Revise as alterações no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "project.create" ? "Preparei uma proposta de projeto. Revise nome, descrição e situação no cartão e confirme para salvar. Nenhum projeto foi criado ainda." : "Preparei uma proposta de tarefa. Revise o cartão de ação e confirme para criá-la. Nenhuma tarefa foi criada ainda. Datas mencionadas no título não definem o prazo automaticamente.",
+      content: action.tool === "task.update" ? "Localizei a tarefa. Revise prazo, prioridade e situação no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "memory.create" ? "Preparei uma memória para revisão. Confira o conteúdo e a classificação no cartão e confirme para salvar. A memória ainda não foi gravada." : action.tool === "project.update" ? "Localizei o projeto. Revise as alterações no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "project.create" ? "Preparei uma proposta de projeto. Revise nome, descrição e situação no cartão e confirme para salvar. Nenhum projeto foi criado ainda." : "Preparei uma proposta de tarefa. Revise o cartão de ação e confirme para criá-la. Nenhuma tarefa foi criada ainda. Datas mencionadas no título não definem o prazo automaticamente.",
       metadata: { action, ...(params.agentId ? { agentId: params.agentId, agentName: params.agentName ?? "Nexus" } : {}) },
     } });
     await tx.conversation.update({ where: { id: params.conversationId }, data: { updatedAt: new Date() } });
@@ -52,7 +62,7 @@ async function proposeAction(params: ProposalParams, action: ConfirmedAction) {
 
 export async function listActions(userId: string, conversationId: string) {
   if (!await db.conversation.findFirst({ where: { id: conversationId, userId }, select: { id: true } })) throw new ActionNotFoundError();
-  const rows = await db.message.findMany({ where: { conversationId, role: "assistant", OR: ["task.create", "project.create", "project.update", "memory.create"].map(tool => ({ metadata: { path: ["action", "tool"], equals: tool } })) }, orderBy: { createdAt: "desc" }, take: 30, select: { id: true, metadata: true } });
+  const rows = await db.message.findMany({ where: { conversationId, role: "assistant", OR: ["task.create", "task.update", "project.create", "project.update", "memory.create"].map(tool => ({ metadata: { path: ["action", "tool"], equals: tool } })) }, orderBy: { createdAt: "desc" }, take: 30, select: { id: true, metadata: true } });
   return rows.flatMap(row => { const action = decode(row.metadata); return action ? [view(row.id, action)] : []; });
 }
 
@@ -65,7 +75,8 @@ export async function decideAction(userId: string, id: string, raw: unknown) {
     if (action.status !== "pending") return view(id, action);
     if (decision.decision === "confirm") {
       // The persisted tool determines the input schema, never the caller.
-      if (action.tool === "memory.create") memoryActionInput.parse(decision.input);
+      if (action.tool === "task.update") taskUpdateInput.parse(decision.input);
+      else if (action.tool === "memory.create") memoryActionInput.parse(decision.input);
       else if (action.tool === "task.create") taskActionInput.parse(decision.input);
       else if (action.tool === "project.update") projectUpdateInput.parse(decision.input);
       else projectActionInput.parse(decision.input);
@@ -103,6 +114,16 @@ export async function decideAction(userId: string, id: string, raw: unknown) {
       final = { ...action, input, status: "succeeded", taskId: task.id };
       await tx.auditLog.create({ data: { userId, action: "TASK_CREATED", entityType: "task", entityId: task.id, tool: action.tool, permission: "CONFIRM", metadata: { requestId: id, authorizedBy: userId } } });
     }
+    if (status === "executing" && decision.decision === "confirm" && action.tool === "task.update") {
+      const input = taskUpdateInput.parse(decision.input);
+      const changed = await tx.task.updateMany({
+        where: { id: action.taskId, userId, updatedAt: new Date(action.expectedUpdatedAt) },
+        data: { ...input, dueAt: input.dueAt ? new Date(`${input.dueAt}T00:00:00.000Z`) : null },
+      });
+      if (changed.count !== 1) throw new ActionConflictError();
+      final = { ...action, input, status: "succeeded" };
+      await tx.auditLog.create({ data: { userId, action: "TASK_UPDATED", entityType: "task", entityId: action.taskId, tool: action.tool, permission: "CONFIRM", metadata: { requestId: id, authorizedBy: userId, before: action.input, after: input } } });
+    }
     if (status === "executing" && decision.decision === "confirm" && action.tool === "project.create") {
       const input = projectActionInput.parse(decision.input);
       const project = await tx.project.create({ data: { ...input, userId, metadata: { origin: "nexus", conversationId: current.conversationId, actionRequestId: id } } });
@@ -121,7 +142,7 @@ export async function decideAction(userId: string, id: string, raw: unknown) {
     }
     await tx.message.update({ where: { id }, data: {
       metadata: { ...metadata, action: final },
-      content: final.status === "succeeded" ? final.tool === "memory.create" ? "Memória salva após sua confirmação. Você pode revisá-la, corrigi-la ou bloqueá-la em Memória." : final.tool === "task.create" ? `Tarefa criada após sua confirmação: ${final.input.title}. Consulte-a em Tarefas.` : `Projeto ${final.tool === "project.update" ? "atualizado" : "criado"} após sua confirmação: ${final.input.name}. Consulte-o em Projetos.` : final.status === "cancelled" ? "Proposta cancelada. Nenhuma ação foi executada." : "A proposta expirou. Envie um novo pedido.",
+      content: final.status === "succeeded" ? final.tool === "memory.create" ? "Memória salva após sua confirmação. Você pode revisá-la, corrigi-la ou bloqueá-la em Memória." : (final.tool === "task.create" || final.tool === "task.update") ? `Tarefa ${final.tool === "task.update" ? "atualizada" : "criada"} após sua confirmação: ${final.input.title}. Consulte-a em Tarefas.` : `Projeto ${final.tool === "project.update" ? "atualizado" : "criado"} após sua confirmação: ${final.input.name}. Consulte-o em Projetos.` : final.status === "cancelled" ? "Proposta cancelada. Nenhuma ação foi executada." : "A proposta expirou. Envie um novo pedido.",
     } });
     await tx.conversation.update({ where: { id: current.conversationId }, data: { updatedAt: new Date() } });
     await tx.auditLog.create({ data: { userId, action: final.status === "succeeded" ? "ACTION_CONFIRMED" : final.status === "cancelled" ? "ACTION_CANCELLED" : "ACTION_EXPIRED", entityType: "conversation", entityId: current.conversationId, tool: action.tool, permission: "CONFIRM", metadata: { requestId: id } } });

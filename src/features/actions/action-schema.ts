@@ -5,6 +5,13 @@ export const taskActionRecord = z.object({
   status: z.enum(["pending", "executing", "succeeded", "cancelled", "expired"]),
   expiresAt: z.string().datetime(), input: taskActionInput, taskId: z.string().optional(),
 });
+export const taskUpdateInput = taskActionInput.extend({
+  status: z.enum(["INBOX", "TODO", "IN_PROGRESS", "BLOCKED", "COMPLETED", "CANCELLED"]),
+});
+export const taskUpdateRecord = taskActionRecord.extend({
+  tool: z.literal("task.update"), input: taskUpdateInput,
+  taskId: z.string().min(1), expectedUpdatedAt: z.string().datetime(),
+});
 export const projectActionInput = z.object({
   name: z.string().trim().min(2).max(120),
   description: z.string().trim().max(5000).default(""),
@@ -27,12 +34,12 @@ export const memoryActionInput = z.object({
 export const memoryActionRecord = taskActionRecord.omit({ tool: true, input: true, taskId: true }).extend({
   tool: z.literal("memory.create"), input: memoryActionInput, memoryId: z.string().optional(),
 });
-export const actionRecord = z.discriminatedUnion("tool", [taskActionRecord, projectActionRecord, projectUpdateRecord, memoryActionRecord]);
+export const actionRecord = z.discriminatedUnion("tool", [taskActionRecord, taskUpdateRecord, projectActionRecord, projectUpdateRecord, memoryActionRecord]);
 export type TaskAction = z.infer<typeof taskActionRecord>;
 export type ConfirmedAction = z.infer<typeof actionRecord>;
 export type ActionView = ConfirmedAction & { id: string };
 export const actionDecision = z.discriminatedUnion("decision", [
-  z.object({ decision: z.literal("confirm"), input: z.union([taskActionInput, projectActionInput, projectUpdateInput, memoryActionInput]) }).strict(),
+  z.object({ decision: z.literal("confirm"), input: z.union([taskUpdateInput, taskActionInput, projectActionInput, projectUpdateInput, memoryActionInput]) }).strict(),
   z.object({ decision: z.literal("cancel") }).strict(),
 ]);
 
@@ -60,4 +67,10 @@ export function parseMemoryCommand(message: string): string | null {
   const match = message.trim().match(/^(?:\/memoria\s+|(?:salve|guarde|registre)\s+(?:na\s+mem[oó]ria|(?:uma\s+)?mem[oó]ria)\s*:\s*|(?:lembre|lembre-se)\s+(?:de\s+)?que\s+)([\s\S]+)$/iu);
   const content = match?.[1]?.trim();
   return content && content.length >= 2 && content.length <= 12000 ? content : null;
+}
+
+export function parseTaskEditCommand(message: string): string | null {
+  const match = message.trim().match(/^(?:\/editar-tarefa\s+|(?:edite|editar|atualize|atualizar)\s+(?:a\s+)?tarefa\s*:\s*)([^\n]+)$/iu);
+  const query = match?.[1]?.trim();
+  return query && query.length >= 2 && query.length <= 200 ? query : null;
 }
