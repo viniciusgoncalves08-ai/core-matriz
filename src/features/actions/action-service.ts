@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { actionRecord, actionDecision, taskUpdateInput, memoryActionInput, taskActionInput, projectActionInput, projectUpdateInput, type ConfirmedAction, type ActionView } from "./action-schema";
+import { actionRecord, actionDecision, suggestMemoryClassification, taskUpdateInput, memoryActionInput, taskActionInput, projectActionInput, projectUpdateInput, type ConfirmedAction, type ActionView } from "./action-schema";
 
 export class ActionNotFoundError extends Error {}
 export class ActionConflictError extends Error {}
@@ -17,7 +17,7 @@ function view(id: string, action: ConfirmedAction): ActionView {
 type ProposalParams = { userId: string; conversationId: string; message: string; agentId?: string; agentName?: string };
 const expiry = () => new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 export async function proposeMemory(params: ProposalParams & { content: string }) {
-  return proposeAction(params, { version: 1, tool: "memory.create", permission: "CONFIRM", status: "pending", expiresAt: expiry(), input: memoryActionInput.parse({ content: params.content }) });
+  return proposeAction(params, { version: 1, tool: "memory.create", permission: "CONFIRM", status: "pending", expiresAt: expiry(), input: memoryActionInput.parse({ content: params.content, classification: suggestMemoryClassification(params.content) }) });
 }
 export async function proposeTask(params: ProposalParams & { title: string }) {
   return proposeAction(params, { version: 1, tool: "task.create", permission: "CONFIRM", status: "pending", expiresAt: expiry(), input: taskActionInput.parse({ title: params.title }) });

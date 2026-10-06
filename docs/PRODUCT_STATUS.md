@@ -86,3 +86,6 @@ Envie `edite a tarefa: título completo` ou `/editar-tarefa título completo`. O
 
 ### Consulta direta de tarefas
 `minhas tarefas`, `tarefas atrasadas` e `tarefas sem prazo` consultam registros próprios em aberto sem chamar o modelo. Até 20 itens, contagem total, ordenação por prazo e prioridade, histórico persistente e auditoria. Concluídas/canceladas ficam fora. Datas seguem Brasília. Não ativa notificações.
+
+### Pedidos naturais de memória
+Além de `lembre que`, o Nexus aceita `guarde que`, `pode guardar que` e `quero que você lembre que`, com conteúdo explícito. O cartão sugere preferência, decisão, objetivo ou hipótese por regras conservadoras; caso contrário mantém contexto. O usuário revisa conteúdo/classificação e confirma antes de salvar. Não há extração automática de toda conversa nem resolução automática de referências como “guarde isso”.
