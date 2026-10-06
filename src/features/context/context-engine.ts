@@ -1,3 +1,4 @@
+import { isMemoryProfileRequest } from "./memory-intent";
 import { expandRecallTerms, recallConversations, type ConversationExcerpt } from "./conversation-recall";
 import { db } from "@/lib/db";
 
@@ -22,9 +23,9 @@ export function extractContextTerms(message: string): string[] {
 }
 
 export async function buildContext(userId: string, message: string, options: { recentUserMessages?: string[]; excludeMessageIds?: string[] } = {}): Promise<NexusContext> {
-  const ownTerms = extractContextTerms(message);
-  const profileRequest = /(?:o que.*(?:sabe|lembra).*mim|minhas mem[oó]rias)/iu.test(message);
-  const followUp = /(?:isso|esse|essa|lembra|lembro|anterior|aquele|aquela|plano)/iu.test(message);
+  const profileRequest = isMemoryProfileRequest(message);
+  const ownTerms = profileRequest ? [] : extractContextTerms(message);
+  const followUp = !profileRequest && /(?:isso|esse|essa|lembra|lembro|anterior|aquele|aquela|plano)/iu.test(message);
   const meaningful = ownTerms.filter(term => !["plano", "aquele", "aquela", "disso"].includes(term));
   const terms = expandRecallTerms(meaningful.length ? ownTerms : followUp ? (options.recentUserMessages ?? []).slice(-3).flatMap(extractContextTerms).filter(term => !["plano", "aquele", "aquela", "disso"].includes(term)).slice(0, 8) : ownTerms);
   if (!terms.length && !profileRequest) return { memories: [], projects: [], tasks: [], goals: [] };

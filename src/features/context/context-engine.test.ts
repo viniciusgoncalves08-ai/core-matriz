@@ -71,3 +71,18 @@ it("can list a bounded memory sample for a profile request without unrelated pro
   expect(queries.memory.findMany.mock.calls[0][0].where.OR).toBeUndefined();
   expect(queries.project.findMany).not.toHaveBeenCalled();
 });
+
+it.each(["Me conte o que você sabe sobre mim", "Nexus, me diga o que lembra de mim", "Liste minhas memórias", "Mostre minhas memórias salvas", "O que você tem guardado sobre mim?"])("retrieves profile memories without filtering by request wording: %s", async message => {
+  await buildContext("owner", message, {recentUserMessages:["estoque da loja"]});
+  const query = queries.memory.findMany.mock.calls[0][0];
+  expect(query.where.OR).toBeUndefined();
+  expect(query.where.userId).toBe("owner");
+  expect(query.where.status).toBe("ACTIVE");
+  expect(query.take).toBe(8);
+  expect(queries.project.findMany).not.toHaveBeenCalled();
+  expect(queries.message.findMany).not.toHaveBeenCalled();
+});
+it("keeps a topic-specific memory request filtered", async () => {
+  await buildContext("owner", "Minhas memórias sobre leitura");
+  expect(queries.memory.findMany.mock.calls[0][0].where.OR).toContainEqual({content:{contains:"leitura",mode:"insensitive"}});
+});
