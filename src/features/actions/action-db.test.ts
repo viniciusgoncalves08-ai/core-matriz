@@ -90,6 +90,7 @@ describe.skipIf(process.env.ACTION_DB_TESTS !== "true")("task confirmation with 
   it("saves a reviewed memory once with provenance, initial version and audit", async () => {
     const proposal = await proposeMemory({userId,conversationId,message:"lembre que prefiro ler",content:"prefiro ler"});
     expect(await db.memory.count({where:{userId}})).toBe(0);
+    expect((await listActions(userId,conversationId)).find(a=>a.id===proposal.message.id)?.input).toMatchObject({classification:"PREFERENCE"});
     const decision={decision:"confirm",input:{content:"Prefiro ler à noite",classification:"PREFERENCE"}};
     await expect(decideAction("other",proposal.message.id,decision)).rejects.toBeInstanceOf(ActionNotFoundError);
     const [a,b]=await Promise.all([decideAction(userId,proposal.message.id,decision),decideAction(userId,proposal.message.id,decision)]);

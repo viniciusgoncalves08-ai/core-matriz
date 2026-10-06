@@ -304,3 +304,6 @@ Em Configurações, escolha uma voz do navegador, velocidade e tom, com prévia.
 Envie `edite a tarefa: título completo` ou `/editar-tarefa título completo`. O cartão permite revisar título, prazo, prioridade e situação (incluindo concluída). Só a confirmação salva, com auditoria, isolamento por usuário, execução única e proteção contra alterações posteriores à proposta. Títulos duplicados exigem diferenciação na página Tarefas. Não ativa notificações.
 
 Consultas diretas no Nexus: `minhas tarefas`, `tarefas atrasadas` e `tarefas sem prazo`. Retornam até 20 tarefas próprias em aberto, total e prazos, sem chamada à IA. Resposta salva na conversa e consulta auditada; não agenda notificações.
+
+### Pedidos naturais de memória
+Além de `lembre que`, o Nexus aceita `guarde que`, `pode guardar que` e `quero que você lembre que`, com conteúdo explícito. O cartão sugere preferência, decisão, objetivo ou hipótese por regras conservadoras; caso contrário mantém contexto. O usuário revisa conteúdo/classificação e confirma antes de salvar. Não há extração automática de toda conversa nem resolução automática de referências como “guarde isso”.

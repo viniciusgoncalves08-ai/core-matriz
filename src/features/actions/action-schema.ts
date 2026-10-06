@@ -64,13 +64,28 @@ export function parseProjectEditCommand(message: string): string | null {
 
 // A direct user request proposes a memory; only the confirmation endpoint writes it.
 export function parseMemoryCommand(message: string): string | null {
-  const match = message.trim().match(/^(?:\/memoria\s+|(?:salve|guarde|registre)\s+(?:na\s+mem[oó]ria|(?:uma\s+)?mem[oó]ria)\s*:\s*|(?:lembre|lembre-se)\s+(?:de\s+)?que\s+)([\s\S]+)$/iu);
-  const content = match?.[1]?.trim();
+  const text = message.trim();
+  const legacy = text.match(/^(?:\/memoria\s+|(?:salve|guarde|registre)\s+(?:na\s+mem[oó]ria|(?:uma\s+)?mem[oó]ria)\s*:\s*|(?:lembre|lembre-se)\s+(?:de\s+)?que\s+)([\s\S]+)$/iu);
+  const natural = text.match(/^(?:nexus[, ]+)?(?:por favor[, ]+)?(?:(?:quero que (?:voc[eê] )?)|(?:voc[eê] pode |pode ))?(?:guardar|salvar|registrar|lembrar|guarde|salve|registre|lembre|lembre-se)(?: na mem[oó]ria)?(?: de)?\s+que\s+([\s\S]+)$/iu);
+  const content = (legacy?.[1] ?? natural?.[1])?.trim();
+  // A concrete body is required; references such as "guarde isso" stay in chat.
   return content && content.length >= 2 && content.length <= 12000 ? content : null;
+
 }
 
 export function parseTaskEditCommand(message: string): string | null {
   const match = message.trim().match(/^(?:\/editar-tarefa\s+|(?:edite|editar|atualize|atualizar)\s+(?:a\s+)?tarefa\s*:\s*)([^\n]+)$/iu);
   const query = match?.[1]?.trim();
   return query && query.length >= 2 && query.length <= 200 ? query : null;
+}
+
+// Suggestions only: the user can change this classification before confirming.
+// Uncertain claims must never become facts through these rules.
+export function suggestMemoryClassification(content: string): z.infer<typeof memoryActionInput>["classification"] {
+  const text = content.trim();
+  if (/\b(?:talvez|acho que|acredito que|suponho que|pode ser|provavelmente)\b/iu.test(text)) return "HYPOTHESIS";
+  if (/^(?:eu\s+)?(?:prefiro|gosto de|n[aã]o gosto de|minha prefer[eê]ncia [eé])\s/iu.test(text)) return "PREFERENCE";
+  if (/^(?:eu\s+)?(?:decidi|decidimos|minha decis[aã]o [eé])\s/iu.test(text)) return "DECISION";
+  if (/^(?:meu objetivo [eé]|minha meta [eé])\s/iu.test(text)) return "GOAL";
+  return "CONTEXT";
 }
