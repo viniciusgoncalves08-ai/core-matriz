@@ -83,3 +83,6 @@ Configurações permite escolher vozes realmente disponíveis no navegador, ajus
 
 ### Edição de tarefas pelo Nexus
 Envie `edite a tarefa: título completo` ou `/editar-tarefa título completo`. O cartão permite revisar título, prazo, prioridade e situação (incluindo concluída). Só a confirmação salva, com auditoria, isolamento por usuário, execução única e proteção contra alterações posteriores à proposta. Títulos duplicados exigem diferenciação na página Tarefas. Não ativa notificações.
+
+### Consulta direta de tarefas
+`minhas tarefas`, `tarefas atrasadas` e `tarefas sem prazo` consultam registros próprios em aberto sem chamar o modelo. Até 20 itens, contagem total, ordenação por prazo e prioridade, histórico persistente e auditoria. Concluídas/canceladas ficam fora. Datas seguem Brasília. Não ativa notificações.
