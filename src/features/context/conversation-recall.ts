@@ -1,3 +1,4 @@
+import { isMemorySnapshot } from "@/features/memory/memory-snapshot";
 import { db } from "@/lib/db";
 
 export type ConversationExcerpt = { id: string; conversationId: string; title: string | null; role: string; content: string; createdAt: Date };
@@ -32,9 +33,9 @@ export async function recallConversations(userId: string, terms: string[], exclu
       OR: terms.map(term => ({ content: { contains: term, mode: "insensitive" as const } })),
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 24,
-    select: { id: true, conversationId: true, role: true, content: true, createdAt: true, conversation: { select: { title: true } } },
+    select: { id: true, conversationId: true, role: true, content: true, metadata: true, createdAt: true, conversation: { select: { title: true } } },
   });
-  return rows.map(row => ({ row, score: terms.filter(term => row.content.toLocaleLowerCase("pt-BR").includes(term)).length }))
+  return rows.filter(row => !isMemorySnapshot(row.metadata)).map(row => ({ row, score: terms.filter(term => row.content.toLocaleLowerCase("pt-BR").includes(term)).length }))
     .sort((a, b) => b.score - a.score || b.row.createdAt.getTime() - a.row.createdAt.getTime())
     .slice(0, 6).map(({ row }) => ({ id: row.id, conversationId: row.conversationId, title: row.conversation.title, role: row.role, content: excerptAroundMatch(row.content, terms), createdAt: row.createdAt }));
 }

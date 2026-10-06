@@ -1,3 +1,6 @@
+import { isMemorySnapshot } from "@/features/memory/memory-snapshot";
+import { isMemoryProfileRequest } from "@/features/context/memory-intent";
+import { respondWithMemoryQuery } from "@/features/memory/memory-query";
 import { parseTaskQuery, respondWithTaskQuery } from "@/features/tasks/task-query";
 import { isDailyBriefRequest, respondWithDailyBrief } from "@/features/home/daily-brief";
 import { RECALL_POLICY } from "@/features/context/conversation-recall";
@@ -39,6 +42,11 @@ export async function respondAsNexus(params: {
   });
   if (params.agentId && !agent) throw new AgentUnavailableError("Agente não encontrado.");
   if (agent && agent.status !== "ACTIVE") throw new AgentUnavailableError("Este agente está pausado ou desativado. Ative-o em Agentes para conversar.");
+
+  if (isMemoryProfileRequest(params.message)) {
+    if (params.signal?.aborted) throw new AIError("AI_CANCELLED");
+    return respondWithMemoryQuery({ ...params, agentId: agent?.id });
+  }
 
   const taskFilter = parseTaskQuery(params.message);
   if (taskFilter) {
@@ -85,9 +93,9 @@ export async function respondAsNexus(params: {
     where: { conversationId: conversation.id, role: { in: ["user", "assistant"] } },
     orderBy: { createdAt: "desc" },
     take: 30,
-    select: { id: true, role: true, content: true },
+    select: { id: true, role: true, content: true, metadata: true },
   });
-  const history = limitHistory(recentMessages.reverse().map(message => ({
+  const history = limitHistory(recentMessages.reverse().filter(message => !isMemorySnapshot(message.metadata)).map(message => ({
     role: message.role as "user" | "assistant", content: message.content,
   })));
 

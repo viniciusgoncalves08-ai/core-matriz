@@ -92,3 +92,6 @@ Além de `lembre que`, o Nexus aceita `guarde que`, `pode guardar que` e `quero 
 
 ### Recuperação de perfil
 Perguntas gerais como “me conte o que você sabe sobre mim” e “liste minhas memórias” recuperam até oito memórias ativas e válidas do próprio usuário sem filtrar pelas palavras do pedido. Perguntas sobre assuntos específicos mantêm a busca textual. O orçamento de contexto continua limitado: a resposta não representa um inventário completo de tudo que foi salvo.
+
+### Inventário direto de memória
+Perguntas gerais de perfil usam consulta determinística sem provedor: total, até 20 registros ativos/válidos, classificação e conteúdo (trechos limitados a 500 caracteres). Não infere inexistência de conversas a partir de memória vazia. Resposta persistente e auditoria. A seleção limitada anterior continua no Context Engine para seu uso como contexto; o inventário direto é o caminho das perguntas gerais.

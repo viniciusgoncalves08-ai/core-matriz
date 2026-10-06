@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ proposeTaskEdit: vi.fn(), proposeMemory: vi.fn(), proposeProjectEdit: vi.fn(), proposeProject: vi.fn(), proposeTask: vi.fn(), findAgent: vi.fn(), findConversation: vi.fn(), history: vi.fn(), createMessage: vi.fn(), generate: vi.fn(), stream: vi.fn() }));
+const mocks = vi.hoisted(() => ({ memoryQuery: vi.fn(), proposeTaskEdit: vi.fn(), proposeMemory: vi.fn(), proposeProjectEdit: vi.fn(), proposeProject: vi.fn(), proposeTask: vi.fn(), findAgent: vi.fn(), findConversation: vi.fn(), history: vi.fn(), createMessage: vi.fn(), generate: vi.fn(), stream: vi.fn() }));
 vi.mock("@/lib/db", () => ({ db: { $transaction: async (action: (tx: unknown) => unknown) => action({ message: { create: mocks.createMessage }, conversation: { update: vi.fn() }, auditLog: { create: vi.fn() } }), agent: { findFirst: mocks.findAgent }, conversation: { findFirst: mocks.findConversation, update: vi.fn() }, message: { findMany: mocks.history, create: mocks.createMessage }, auditLog: { create: vi.fn() } } }));
 vi.mock("@/features/context/context-engine", () => ({ buildContext: vi.fn().mockResolvedValue({}), serializeContext: () => "" }));
 vi.mock("@/ai/model-router", () => ({ modelRouter: { generate: mocks.generate, stream: mocks.stream } }));
 vi.mock("@/features/actions/action-service", () => ({ proposeTaskEdit: mocks.proposeTaskEdit, proposeMemory: mocks.proposeMemory, proposeProjectEdit: mocks.proposeProjectEdit, proposeProject: mocks.proposeProject, proposeTask: mocks.proposeTask }));
+vi.mock("@/features/memory/memory-query", () => ({ respondWithMemoryQuery: mocks.memoryQuery }));
 import { respondAsNexus } from "./nexus-service";
 describe("continuidade do Nexus", () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.findAgent.mockResolvedValue(null); mocks.generate.mockResolvedValue({ text: "Resposta", model: "test", provider: "test" }); });
@@ -130,4 +131,20 @@ it("proposes a task update without calling the model", async () => {
  await respondAsNexus({userId:"u",conversationId:"c",message:"edite a tarefa: Ligar"});
  expect(mocks.proposeTaskEdit).toHaveBeenCalledWith(expect.objectContaining({userId:"u",query:"Ligar"}));
  expect(mocks.generate).not.toHaveBeenCalled();
+});
+
+it("uses a direct memory query without model calls for profile requests", async () => {
+ vi.clearAllMocks(); mocks.findConversation.mockResolvedValue({id:"c"}); mocks.findAgent.mockResolvedValue(null);
+ mocks.memoryQuery.mockResolvedValue({message:{id:"memory-list"}});
+ await respondAsNexus({userId:"u",conversationId:"c",message:"Liste minhas memórias"});
+ expect(mocks.memoryQuery).toHaveBeenCalledWith(expect.objectContaining({userId:"u",conversationId:"c"}));
+ expect(mocks.generate).not.toHaveBeenCalled(); expect(mocks.stream).not.toHaveBeenCalled();
+});
+
+it("keeps memory inventory snapshots out of later model context", async () => {
+ vi.clearAllMocks(); mocks.findConversation.mockResolvedValue({id:"c"}); mocks.findAgent.mockResolvedValue(null);
+ mocks.history.mockResolvedValue([{id:"snapshot",role:"assistant",content:"Stale private memory",metadata:{kind:"memory_query"}},{id:"user",role:"user",content:"Pergunta atual"}]);
+ mocks.generate.mockResolvedValue({text:"Resposta",model:"test",provider:"test"});
+ await respondAsNexus({userId:"u",conversationId:"c",message:"continue"});
+ expect(JSON.stringify(mocks.generate.mock.calls[0][0].messages)).not.toContain("Stale private memory");
 });
