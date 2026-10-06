@@ -307,3 +307,6 @@ Consultas diretas no Nexus: `minhas tarefas`, `tarefas atrasadas` e `tarefas sem
 
 ### Pedidos naturais de memória
 Além de `lembre que`, o Nexus aceita `guarde que`, `pode guardar que` e `quero que você lembre que`, com conteúdo explícito. O cartão sugere preferência, decisão, objetivo ou hipótese por regras conservadoras; caso contrário mantém contexto. O usuário revisa conteúdo/classificação e confirma antes de salvar. Não há extração automática de toda conversa nem resolução automática de referências como “guarde isso”.
+
+### Recuperação de perfil
+Perguntas gerais como “me conte o que você sabe sobre mim” e “liste minhas memórias” recuperam até oito memórias ativas e válidas do próprio usuário sem filtrar pelas palavras do pedido. Perguntas sobre assuntos específicos mantêm a busca textual. O orçamento de contexto continua limitado: a resposta não representa um inventário completo de tudo que foi salvo.
