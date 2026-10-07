@@ -95,3 +95,6 @@ Perguntas gerais como “me conte o que você sabe sobre mim” e “liste minha
 
 ### Inventário direto de memória
 Perguntas gerais de perfil usam consulta determinística sem provedor: total, até 20 registros ativos/válidos, classificação e conteúdo (trechos limitados a 500 caracteres). Não infere inexistência de conversas a partir de memória vazia. Resposta persistente e auditoria. A seleção limitada anterior continua no Context Engine para seu uso como contexto; o inventário direto é o caminho das perguntas gerais.
+
+### Busca no histórico
+Busca real por título e texto de mensagens, filtrada por usuário, com paginação de 20 conversas e contagem total. Substitui o filtro local limitado às últimas 50 conversas. Ainda não é busca global em todos os módulos nem busca semântica.
