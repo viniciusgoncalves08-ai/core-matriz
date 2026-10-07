@@ -13,10 +13,25 @@ const createSchema = z.object({
   confidence: z.number().min(0).max(1).optional(),
 });
 
-export async function GET() {
-  const userId = await getSessionUserId();
-  if (!userId) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
-  return NextResponse.json({ memories: await listMemories(userId) });
+const searchSchema = z.object({
+  q: z.string().trim().max(120).optional(),
+  classification: z.nativeEnum(MemoryClassification).optional(),
+  status: z.enum(["ACTIVE", "BLOCKED", "SUPERSEDED"]).optional(),
+  page: z.coerce.number().int().min(1).max(10000).default(1),
+});
+
+export async function GET(request: Request) {
+  const headers = { "Cache-Control": "private, no-store" };
+  try {
+    const userId = await getSessionUserId();
+    if (!userId) return NextResponse.json({ error: "Não autenticado" }, { status: 401, headers });
+    const params = new URL(request.url).searchParams;
+    const input = searchSchema.parse(Object.fromEntries(params));
+    return NextResponse.json(await listMemories(userId, input), { headers });
+  } catch (error) {
+    const invalid = error instanceof z.ZodError;
+    return NextResponse.json({ error: invalid ? "Confira os filtros da busca." : "Não foi possível carregar as memórias." }, { status: invalid ? 400 : 500, headers });
+  }
 }
 
 export async function POST(request: Request) {

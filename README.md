@@ -314,3 +314,6 @@ Perguntas gerais como “me conte o que você sabe sobre mim” e “liste minha
 `Liste minhas memórias` e perguntas gerais de perfil agora retornam uma consulta direta ao banco, sem chamada à IA: total de memórias ativas/válidas, até 20 registros e trechos de até 500 caracteres. Registros bloqueados, excluídos, substituídos, vencidos ou futuros ficam fora. A resposta é salva no histórico e auditada. Perguntas específicas continuam usando o Context Engine.
 
 Histórico: busca no servidor por título e conteúdo das mensagens de todas as conversas próprias, com contagem total e páginas de 20 resultados. Interface responsiva com estados de busca, vazio e erro. Resultados não são compartilhados entre usuários nem armazenados em cache público.
+
+### Busca e revisão de memória
+Em `/memoria`, pesquise conteúdo, resumo ou origem; combine categoria e situação e pressione **Buscar**. A consulta abrange todo o acervo do usuário, em páginas de 20 memórias. Edição, bloqueio, exclusão e versões continuam disponíveis nos resultados. Memórias excluídas ficam fora da lista; bloquear impede o uso no contexto. Não utiliza créditos de IA.

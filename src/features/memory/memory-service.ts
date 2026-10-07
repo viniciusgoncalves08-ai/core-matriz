@@ -1,12 +1,28 @@
 import { db } from "@/lib/db";
-import type { MemoryClassification } from "@prisma/client";
+import type { MemoryClassification, Prisma } from "@prisma/client";
 
-export async function listMemories(userId: string) {
-  return db.memory.findMany({
-    where: { userId, status: { not: "DELETED" } },
-    orderBy: [{ importance: "desc" }, { updatedAt: "desc" }],
-    include: { versions: { orderBy: { createdAt: "desc" }, take: 5 } },
-  });
+export type MemorySearch = { q?: string; classification?: MemoryClassification; status?: "ACTIVE" | "BLOCKED" | "SUPERSEDED"; page?: number };
+
+export async function listMemories(userId: string, input: MemorySearch = {}) {
+  const page = input.page ?? 1;
+  const pageSize = 20;
+  const where: Prisma.MemoryWhereInput = {
+    userId,
+    status: input.status ?? { not: "DELETED" },
+    ...(input.classification ? { classification: input.classification } : {}),
+    ...(input.q ? { OR: ["content", "summary", "source"].map(field => ({ [field]: { contains: input.q, mode: "insensitive" } })) } : {}),
+  };
+  const [total, memories] = await db.$transaction([
+    db.memory.count({ where }),
+    db.memory.findMany({
+      where,
+      orderBy: [{ importance: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: { versions: { orderBy: { createdAt: "desc" }, take: 5 } },
+    }),
+  ], { isolationLevel: "RepeatableRead" });
+  return { memories, total, page, pageSize, hasMore: page * pageSize < total };
 }
 
 export async function createMemory(input: {

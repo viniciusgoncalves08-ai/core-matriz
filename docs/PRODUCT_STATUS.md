@@ -11,11 +11,11 @@ Sem Lovable. Provedores de IA são integrações do produto, não desenvolvedore
 | --- | --- | --- |
 | Fundação, banco e deploy (3–5, 53, 55, 65–66) | Next.js, React, TypeScript, Prisma/PostgreSQL, migration inicial, CI e publicação Vercel | Expandir testes de navegador e observabilidade; manter gates em cada entrega |
 | Autenticação (51–52) | Cadastro, login, sessão HTTP-only, hash de senha, API de logout, consultas por usuário | Recuperação de senha, configurações e logout visível, rate limiting e revisão de abuso |
-| Chat (6–8) | Rota própria, histórico persistente, continuidade, streaming OpenAI/Gemini, Markdown, código, tabelas, estado de erro e interrupção | Anexos, pesquisa de conversas e ferramentas além de propostas explícitas de tarefas/projetos |
+| Chat (6–8) | Rota própria, histórico persistente, continuidade, streaming OpenAI/Gemini, Markdown, código, tabelas, estado de erro e interrupção | Anexos e ferramentas além de propostas explícitas de tarefas/projetos |
 | Identidade (7) | Nome e instruções editáveis no agente | Configuração central de nome/avatar/voz/proatividade; ainda existem textos Nexus fixos |
-| Memória (9–12) | Classificação, conteúdo, resumo, origem, importância, confiança, bloqueio, edição e versões, exclusão lógica | Relações com entidades, tags na UI, marcar incorreta, validade completa, inferência com evidências, paginação e extração controlada pelo Nexus |
+| Memória (9–12) | Classificação, conteúdo, resumo, origem, importância, confiança, bloqueio, edição e versões, exclusão lógica | Relações com entidades, tags na UI, marcar incorreta, validade completa, inferência com evidências e extração automática controlada pelo Nexus |
 | Context Engine (13) | Filtros textuais por usuário, validade temporal da memória, origem/confiança, objetivos e trechos de conversas anteriores relevantes, até 12 mil caracteres serializados de contexto e até 16 mil de histórico recente | Intent Engine, entidades, ranking híbrido, orçamento por tokens exatos, relações e arquivos; busca ainda lexical, sem compreensão semântica |
-| Busca / embeddings (14–15) | Busca local nas listas de memória, projeto e tarefa | Busca global no servidor, períodos/entidades, full-text e busca semântica; pgvector ainda não instalado |
+| Busca / embeddings (14–15) | Busca no servidor em memórias e conversas; busca local em projetos e tarefas | Busca global no servidor, períodos/entidades, full-text e busca semântica; pgvector ainda não instalado |
 | Agent Hub (16–19) | Criar/editar, pausar/ativar, prompt/modelo/temperatura e conversa individual com identidade persistente | Coordenação automática pelo Nexus, execuções encadeadas, catálogo de ferramentas/permissões e painel de execuções |
 | Providers / Router (20–23) | Interface comum generate/stream/healthCheck; OpenAI/Gemini; fallback técnico explícito, sem misturar streams | Anthropic, embeddings/toolCall, seleção por capacidades/custo e orçamento; nenhuma troca paga automática no fluxo atual |
 | Permissões / ações / tools (24–26) | Propostas de criação de tarefas/projetos e edição de projetos por comando explícito, confirmação autenticada, cancelamento, expiração, idempotência e auditoria | Motor genérico de permissões e novas ferramentas. Não há ferramentas externas funcionando |
@@ -98,3 +98,6 @@ Perguntas gerais de perfil usam consulta determinística sem provedor: total, at
 
 ### Busca no histórico
 Busca real por título e texto de mensagens, filtrada por usuário, com paginação de 20 conversas e contagem total. Substitui o filtro local limitado às últimas 50 conversas. Ainda não é busca global em todos os módulos nem busca semântica.
+
+### Explorar memórias
+Pesquisa no servidor por conteúdo, resumo e origem, combinada com categoria e situação. Listagem paginada de 20 itens com contagem total, ordenação estável e versões recentes preservadas. Excluídas não aparecem; bloqueadas e substituídas continuam disponíveis para revisão. Ao remover o último item de uma página, a tela retorna à página anterior. Consultas são restritas ao dono, sem cache público, e podem ser canceladas ao mudar filtros. A busca é textual; não é recuperação semântica nem extração automática.
