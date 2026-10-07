@@ -30,3 +30,11 @@
 .history-results time { font-size: .8rem; }
 .history-pagination button, .history-search button { min-height: 44px; }
 @media (max-width: 680px) { .history-results { grid-template-columns: 1fr; } }
+
+.memory-workspace { max-width: 1000px; }
+.memory-search { border-color: rgba(105,212,232,.22); background: linear-gradient(125deg,#10151f,#101e27); }
+.memory-search h2, .memory-search p { margin: 0; }
+.memory-search .filters { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+.memory-result { overflow-wrap: anywhere; }
+.memory-workspace button { min-height: 44px; }
+@media (max-width:680px) { .memory-search .filters { grid-template-columns: 1fr; } }
