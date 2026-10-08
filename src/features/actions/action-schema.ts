@@ -32,6 +32,7 @@ export const memoryActionInput = z.object({
   classification: z.enum(["FACT", "PREFERENCE", "DECISION", "HYPOTHESIS", "OBSERVED_PATTERN", "CONTEXT", "KNOWLEDGE", "RESTRICTION", "GOAL"]).default("CONTEXT"),
 }).strict();
 export const memoryActionRecord = taskActionRecord.omit({ tool: true, input: true, taskId: true }).extend({
+  sourceMessageId: z.string().min(1).max(100).optional(),
   tool: z.literal("memory.create"), input: memoryActionInput, memoryId: z.string().optional(),
 });
 export const actionRecord = z.discriminatedUnion("tool", [taskActionRecord, taskUpdateRecord, projectActionRecord, projectUpdateRecord, memoryActionRecord]);
@@ -68,7 +69,7 @@ export function parseMemoryCommand(message: string): string | null {
   const legacy = text.match(/^(?:\/memoria\s+|(?:salve|guarde|registre)\s+(?:na\s+mem[oó]ria|(?:uma\s+)?mem[oó]ria)\s*:\s*|(?:lembre|lembre-se)\s+(?:de\s+)?que\s+)([\s\S]+)$/iu);
   const natural = text.match(/^(?:nexus[, ]+)?(?:por favor[, ]+)?(?:(?:quero que (?:voc[eê] )?)|(?:voc[eê] pode |pode ))?(?:guardar|salvar|registrar|lembrar|guarde|salve|registre|lembre|lembre-se)(?: na mem[oó]ria)?(?: de)?\s+que\s+([\s\S]+)$/iu);
   const content = (legacy?.[1] ?? natural?.[1])?.trim();
-  // A concrete body is required; references such as "guarde isso" stay in chat.
+  // Concrete bodies are parsed here; reference requests have a separate reviewed flow.
   return content && content.length >= 2 && content.length <= 12000 ? content : null;
 
 }

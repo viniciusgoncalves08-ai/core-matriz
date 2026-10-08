@@ -330,3 +330,6 @@ O chat carrega o padrão da conta. Alterar o checkbox no chat é uma escolha tem
 
 ### Revisão direta de memória
 Cada aviso de captura automática leva a /memoria/{id}, protegido por sessão e posse do registro. A página mostra conteúdo, categoria, origem, conversa, datas, disponibilidade no contexto e até 10 versões recentes. Permite corrigir, bloquear/desbloquear e excluir com confirmação, reutilizando os serviços transacionais existentes. Links antigos para memórias excluídas exibem apenas aviso de exclusão, sem conteúdo/versões. Exclusão não apaga conversa de origem nem auditoria. A lista geral também oferece acesso aos detalhes.
+
+### Guardar a mensagem anterior
+Pedidos isolados como “guarde isso na memória” ou “salve essa informação” selecionam apenas a última mensagem do usuário na mesma conversa e geram um cartão de revisão. Não selecionam a resposta da IA nem procuram arbitrariamente mensagens antigas. Perguntas terminadas em interrogação, pedidos conhecidos e referências repetidas são recusados com orientação para enviar “lembre que ...”. É resolução limitada por regras, não compreensão semântica geral. A confirmação permite editar e salva a referência da mensagem original na metadata da memória. Não requer chamada de IA para propor ou confirmar.

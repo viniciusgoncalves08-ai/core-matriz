@@ -16,8 +16,8 @@ function view(id: string, action: ConfirmedAction): ActionView {
 
 type ProposalParams = { userId: string; conversationId: string; message: string; agentId?: string; agentName?: string };
 const expiry = () => new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-export async function proposeMemory(params: ProposalParams & { content: string }) {
-  return proposeAction(params, { version: 1, tool: "memory.create", permission: "CONFIRM", status: "pending", expiresAt: expiry(), input: memoryActionInput.parse({ content: params.content, classification: suggestMemoryClassification(params.content) }) });
+export async function proposeMemory(params: ProposalParams & { content: string; sourceMessageId?: string }) {
+  return proposeAction(params, { version: 1, tool: "memory.create", ...(params.sourceMessageId ? { sourceMessageId: params.sourceMessageId } : {}), permission: "CONFIRM", status: "pending", expiresAt: expiry(), input: memoryActionInput.parse({ content: params.content, classification: suggestMemoryClassification(params.content) }) });
 }
 export async function proposeTask(params: ProposalParams & { title: string }) {
   return proposeAction(params, { version: 1, tool: "task.create", permission: "CONFIRM", status: "pending", expiresAt: expiry(), input: taskActionInput.parse({ title: params.title }) });
@@ -51,7 +51,7 @@ async function proposeAction(params: ProposalParams, action: ConfirmedAction) {
     await tx.message.create({ data: { conversationId: params.conversationId, role: "user", content: params.message } });
     const message = await tx.message.create({ data: {
       conversationId: params.conversationId, role: "assistant",
-      content: action.tool === "task.update" ? "Localizei a tarefa. Revise prazo, prioridade e situação no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "memory.create" ? "Preparei uma memória para revisão. Confira o conteúdo e a classificação no cartão e confirme para salvar. A memória ainda não foi gravada." : action.tool === "project.update" ? "Localizei o projeto. Revise as alterações no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "project.create" ? "Preparei uma proposta de projeto. Revise nome, descrição e situação no cartão e confirme para salvar. Nenhum projeto foi criado ainda." : "Preparei uma proposta de tarefa. Revise o cartão de ação e confirme para criá-la. Nenhuma tarefa foi criada ainda. Datas mencionadas no título não definem o prazo automaticamente.",
+      content: action.tool === "task.update" ? "Localizei a tarefa. Revise prazo, prioridade e situação no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "memory.create" ? (action.sourceMessageId ? "Selecionei a sua mensagem anterior, não a resposta da IA. Revise o conteúdo e a classificação no cartão e confirme. Nada foi salvo ainda." : "Preparei uma memória para revisão. Confira o conteúdo e a classificação no cartão e confirme para salvar. A memória ainda não foi gravada.") : action.tool === "project.update" ? "Localizei o projeto. Revise as alterações no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "project.create" ? "Preparei uma proposta de projeto. Revise nome, descrição e situação no cartão e confirme para salvar. Nenhum projeto foi criado ainda." : "Preparei uma proposta de tarefa. Revise o cartão de ação e confirme para criá-la. Nenhuma tarefa foi criada ainda. Datas mencionadas no título não definem o prazo automaticamente.",
       metadata: { action, ...(params.agentId ? { agentId: params.agentId, agentName: params.agentName ?? "Nexus" } : {}) },
     } });
     await tx.conversation.update({ where: { id: params.conversationId }, data: { updatedAt: new Date() } });
@@ -102,7 +102,7 @@ export async function decideAction(userId: string, id: string, raw: unknown) {
         ...input, userId, conversationId: current.conversationId,
         source: "Informada pelo usuário e confirmada no Nexus",
         confidence: ["HYPOTHESIS", "OBSERVED_PATTERN"].includes(input.classification) ? 0.5 : 0.7,
-        metadata: { origin: "nexus", actionRequestId: id },
+        metadata: { origin: "nexus", actionRequestId: id, ...(action.sourceMessageId ? { sourceMessageId: action.sourceMessageId } : {}) },
         versions: { create: { content: input.content, status: "ACTIVE", reason: "Versão inicial confirmada pelo usuário no Nexus" } },
       } });
       final = { ...action, input, status: "succeeded", memoryId: memory.id };
