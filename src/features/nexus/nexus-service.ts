@@ -1,3 +1,4 @@
+import { getMemorySettings } from "@/features/settings/memory-settings-service";
 import { extractAutomaticPreference, saveAutomaticPreference } from "@/features/memory/automatic-preference";
 import { isMemorySnapshot } from "@/features/memory/memory-snapshot";
 import { isMemoryProfileRequest } from "@/features/context/memory-intent";
@@ -130,7 +131,8 @@ export async function respondAsNexus(params: {
     );
 
     if (params.signal?.aborted) throw new AIError("AI_CANCELLED");
-    const preference = params.autoMemory && !params.agentId ? extractAutomaticPreference(params.message) : null;
+    const autoMemory = !params.agentId && (params.autoMemory ?? (await getMemorySettings(params.userId).catch(() => ({ autoMemory: false }))).autoMemory);
+    const preference = autoMemory ? extractAutomaticPreference(params.message) : null;
     const assistantMessage = await db.$transaction(async tx => {
       const capturedId = preference ? await saveAutomaticPreference(tx, { userId: params.userId, conversationId: params.conversationId, messageId: userMessage.id, content: preference }) : undefined;
       const savedMessage = await tx.message.create({

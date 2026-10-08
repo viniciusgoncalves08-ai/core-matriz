@@ -23,7 +23,18 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
-  const [autoMemory, setAutoMemory] = useState(false);
+  const [autoMemory, setAutoMemory] = useState<boolean | undefined>(undefined);
+  const [defaultMemory, setDefaultMemory] = useState(false);
+  const [memorySettingsReady, setMemorySettingsReady] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/settings/memory", { cache: "no-store", signal: controller.signal }).then(async response => {
+      if (!response.ok) return;
+      const data = await response.json();
+      if (!controller.signal.aborted) { setDefaultMemory(data.autoMemory); setMemorySettingsReady(true); }
+    }).catch(() => {});
+    return () => controller.abort();
+  }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,7 +74,7 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
       const response = await fetch("/api/nexus", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ conversationId: id, message, agentId, autoMemory, stream: true }),
+        body: JSON.stringify({ conversationId: id, message, agentId, autoMemory: memorySettingsReady ? autoMemory : false, stream: true }),
         signal: abort.current.signal,
       });
       if (!response.ok) {
@@ -93,8 +104,8 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
         <p className="core-status" role="status">{loading ? "Organizando sua resposta" : voiceState === "listening" ? "Ouvindo você" : voiceState === "speaking" ? "Falando com você" : voiceState === "starting" ? "Conectando áudio" : "Pronto para conversar"}</p>
       </div>
       {messages.length === 0 && <div className="nexus-starters" aria-label="Começar conversa">{[["Seu dia", "resumo do dia", "Prazos e prioridades"], ["Sua memória", "O que você sabe sobre mim?", "Contexto que acompanha você"], ["Próximo passo", "Me ajude a organizar meus projetos", "Transforme ideias em direção"]].map(([title, prompt, description]) => <button type="button" disabled={loading || listening} key={title} onClick={() => setInput(prompt)}><span>{title}</span><small>{description}</small><b aria-hidden="true">↗</b></button>)}</div>}
-      <div className="actions"><Link href={agentId ? `/agentes/${agentId}` : "/nexus"} onClick={event => { if (loading) { event.preventDefault(); return; } setVoiceReset(v => v + 1); setAutoMemory(false); setConversationId(null); setMessages([]); setPartial(""); setError(null); setInput(""); }}>Nova conversa</Link><Link href="/historico">Histórico</Link></div>
-      {!agentId && <div className="panel auto-memory-option"><label><input type="checkbox" checked={autoMemory} disabled={loading} onChange={event => setAutoMemory(event.target.checked)} /> Salvar preferências explícitas automaticamente nesta conversa</label><p className="muted">Primeira versão: frases curtas como “prefiro respostas objetivas”. Ative para salvar após a resposta, sem confirmação por item. Você pode revisar, bloquear ou excluir em Memória. A opção desativa ao recarregar ou iniciar outra conversa.</p></div>}
+      <div className="actions"><Link href={agentId ? `/agentes/${agentId}` : "/nexus"} onClick={event => { if (loading) { event.preventDefault(); return; } setVoiceReset(v => v + 1); setAutoMemory(undefined); setConversationId(null); setMessages([]); setPartial(""); setError(null); setInput(""); }}>Nova conversa</Link><Link href="/historico">Histórico</Link></div>
+      {!agentId && <div className="panel auto-memory-option"><label><input type="checkbox" checked={autoMemory ?? defaultMemory} disabled={loading || !memorySettingsReady} onChange={event => setAutoMemory(event.target.checked)} /> Salvar preferências explícitas automaticamente nesta conversa</label><p className="muted">Primeira versão: frases curtas como “prefiro respostas objetivas”. Ative para salvar após a resposta, sem confirmação por item. Você pode revisar, bloquear ou excluir em Memória. O padrão vem da sua conta; alterações aqui valem só nesta conversa.</p><Link href="/configuracoes">Configurar padrão da conta →</Link>{!memorySettingsReady && <p className="muted">Captura desativada até carregar a configuração. Se persistir, recarregue a página.</p>}</div>}
       {messages.length > 0 && (
         <div className="chat-messages">
           {messages.map((message, index) => (
