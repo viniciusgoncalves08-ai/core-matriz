@@ -1,7 +1,7 @@
 import { ProjectSelectionError } from "@/features/actions/action-service";
 import { AIError } from "@/ai/ai-error";
 import { AgentUnavailableError, respondAsNexus } from "./nexus-service";
-export function nexusStreamResponse(params: { userId: string; conversationId: string; message: string; agentId?: string }, requestSignal: AbortSignal) {
+export function nexusStreamResponse(params: { userId: string; conversationId: string; message: string; agentId?: string; autoMemory?: boolean }, requestSignal: AbortSignal) {
   const controller = new AbortController();
   const signal = AbortSignal.any([requestSignal, controller.signal]);
   const encoder = new TextEncoder();

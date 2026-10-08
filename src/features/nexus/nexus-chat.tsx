@@ -3,13 +3,14 @@
 import { FormEvent, useState, useRef, useEffect } from "react";
 
 import Link from "next/link";
+import { automaticMemoryId } from "@/features/memory/automatic-preference";
 import { VoiceControls } from "./voice-controls";
 import { ActionCards } from "@/features/actions/action-cards";
 import { MessageContent } from "./message-content";
 import { recallSources } from "./recall-sources";
 import { readNexusResponse } from "./read-response";
 
-type ChatMessage = { role: "user" | "assistant"; content: string; sources?: string[] };
+type ChatMessage = { role: "user" | "assistant"; content: string; sources?: string[]; automaticMemoryId?: string };
 
 export function NexusChat({ initialConversationId = null, initialMessages = [], agentId, agentName = "Nexus" }: { agentId?: string; agentName?: string; initialConversationId?: string | null; initialMessages?: ChatMessage[] }) {
   const abort = useRef<AbortController | null>(null);
@@ -22,6 +23,7 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [autoMemory, setAutoMemory] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,7 +63,7 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
       const response = await fetch("/api/nexus", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ conversationId: id, message, agentId, stream: true }),
+        body: JSON.stringify({ conversationId: id, message, agentId, autoMemory, stream: true }),
         signal: abort.current.signal,
       });
       if (!response.ok) {
@@ -70,8 +72,9 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
       }
       if (!response.body) throw new Error("A conexão não retornou uma resposta.");
       let sources: string[] = [];
-      const content = await readNexusResponse(response.body, text => setPartial(current => current + text), metadata => { sources = recallSources(metadata); });
-      setMessages(current => [...current, { role: "assistant", content, sources }]);
+      let capturedId: string | undefined;
+      const content = await readNexusResponse(response.body, text => setPartial(current => current + text), metadata => { sources = recallSources(metadata); capturedId = automaticMemoryId(metadata); });
+      setMessages(current => [...current, { role: "assistant", content, sources, automaticMemoryId: capturedId }]);
       setPartial("");
     } catch (cause) {
       setError(abort.current?.signal.aborted ? "Transmissão interrompida. Consulte o histórico para verificar o que foi salvo." : cause instanceof Error ? cause.message : "Erro inesperado");
@@ -90,13 +93,15 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
         <p className="core-status" role="status">{loading ? "Organizando sua resposta" : voiceState === "listening" ? "Ouvindo você" : voiceState === "speaking" ? "Falando com você" : voiceState === "starting" ? "Conectando áudio" : "Pronto para conversar"}</p>
       </div>
       {messages.length === 0 && <div className="nexus-starters" aria-label="Começar conversa">{[["Seu dia", "resumo do dia", "Prazos e prioridades"], ["Sua memória", "O que você sabe sobre mim?", "Contexto que acompanha você"], ["Próximo passo", "Me ajude a organizar meus projetos", "Transforme ideias em direção"]].map(([title, prompt, description]) => <button type="button" disabled={loading || listening} key={title} onClick={() => setInput(prompt)}><span>{title}</span><small>{description}</small><b aria-hidden="true">↗</b></button>)}</div>}
-      <div className="actions"><Link href={agentId ? `/agentes/${agentId}` : "/nexus"} onClick={event => { if (loading) { event.preventDefault(); return; } setVoiceReset(v => v + 1); setConversationId(null); setMessages([]); setPartial(""); setError(null); setInput(""); }}>Nova conversa</Link><Link href="/historico">Histórico</Link></div>
+      <div className="actions"><Link href={agentId ? `/agentes/${agentId}` : "/nexus"} onClick={event => { if (loading) { event.preventDefault(); return; } setVoiceReset(v => v + 1); setAutoMemory(false); setConversationId(null); setMessages([]); setPartial(""); setError(null); setInput(""); }}>Nova conversa</Link><Link href="/historico">Histórico</Link></div>
+      {!agentId && <div className="panel auto-memory-option"><label><input type="checkbox" checked={autoMemory} disabled={loading} onChange={event => setAutoMemory(event.target.checked)} /> Salvar preferências explícitas automaticamente nesta conversa</label><p className="muted">Primeira versão: frases curtas como “prefiro respostas objetivas”. Ative para salvar após a resposta, sem confirmação por item. Você pode revisar, bloquear ou excluir em Memória. A opção desativa ao recarregar ou iniciar outra conversa.</p></div>}
       {messages.length > 0 && (
         <div className="chat-messages">
           {messages.map((message, index) => (
             <div className={`chat-message ${message.role}`} key={`${message.role}-${index}`}>
               <strong>{message.role === "user" ? "Você" : agentName}</strong>
               {message.role === "assistant" ? <MessageContent content={message.content} /> : <p>{message.content}</p>}
+              {message.role === "assistant" && message.automaticMemoryId && <p className="muted">Uma preferência foi salva automaticamente nesta resposta. <Link href="/memoria">Revisar ou excluir em Memória →</Link></p>}
               {message.role === "assistant" && Boolean(message.sources?.length) && <details><summary>Conversas encontradas no histórico</summary><div className="actions">{message.sources!.map((id, index) => <Link key={id} href={`/historico/${encodeURIComponent(id)}`}>Conversa {index + 1}</Link>)}</div></details>}
             </div>
           ))}
