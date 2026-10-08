@@ -14,3 +14,7 @@ it("keeps existing history and removes starters after a conversation begins",()=
  expect(html).toContain("Resposta salva");
  expect(html).not.toContain('aria-label="Começar conversa"');
 });
+it("links automatic captures to the exact memory",()=>{
+ const html=renderToStaticMarkup(<NexusChat initialMessages={[{role:"assistant",content:"Resposta",automaticMemoryId:"m-specific"}]} />);
+ expect(html).toContain('href="/memoria/m-specific"');expect(html).toContain("Revisar esta memória");
+});

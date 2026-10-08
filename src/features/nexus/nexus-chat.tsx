@@ -112,7 +112,7 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
             <div className={`chat-message ${message.role}`} key={`${message.role}-${index}`}>
               <strong>{message.role === "user" ? "Você" : agentName}</strong>
               {message.role === "assistant" ? <MessageContent content={message.content} /> : <p>{message.content}</p>}
-              {message.role === "assistant" && message.automaticMemoryId && <p className="muted">Uma preferência foi salva automaticamente nesta resposta. <Link href="/memoria">Revisar ou excluir em Memória →</Link></p>}
+              {message.role === "assistant" && message.automaticMemoryId && <p className="muted">Uma preferência foi salva automaticamente nesta resposta. <Link href={`/memoria/${encodeURIComponent(message.automaticMemoryId)}`}>Revisar esta memória →</Link></p>}
               {message.role === "assistant" && Boolean(message.sources?.length) && <details><summary>Conversas encontradas no histórico</summary><div className="actions">{message.sources!.map((id, index) => <Link key={id} href={`/historico/${encodeURIComponent(id)}`}>Conversa {index + 1}</Link>)}</div></details>}
             </div>
           ))}
