@@ -6,6 +6,7 @@ vi.mock("@/ai/model-router", () => ({ modelRouter: { generate: mocks.generate, s
 vi.mock("@/features/actions/action-service", () => ({ proposeTaskEdit: mocks.proposeTaskEdit, proposeMemory: mocks.proposeMemory, proposeProjectEdit: mocks.proposeProjectEdit, proposeProject: mocks.proposeProject, proposeTask: mocks.proposeTask }));
 vi.mock("@/features/memory/memory-query", () => ({ respondWithMemoryQuery: mocks.memoryQuery }));
 vi.mock("@/features/memory/automatic-preference", async importOriginal => ({ ...await importOriginal<typeof import("@/features/memory/automatic-preference")>(), saveAutomaticPreference: mocks.autoSave }));
+vi.mock("@/features/settings/memory-settings-service", () => ({ getMemorySettings: vi.fn().mockResolvedValue({autoMemory:false}) }));
 import { respondAsNexus } from "./nexus-service";
 describe("continuidade do Nexus", () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.findAgent.mockResolvedValue(null); mocks.generate.mockResolvedValue({ text: "Resposta", model: "test", provider: "test" }); });
@@ -164,4 +165,15 @@ it("does not capture after a provider failure", async () => {
  mocks.generate.mockRejectedValueOnce(new Error("offline"));
  await expect(respondAsNexus({userId:"u",conversationId:"c",message:"Prefiro respostas objetivas",autoMemory:true})).rejects.toThrow("offline");
  expect(mocks.autoSave).not.toHaveBeenCalled();
+});
+
+it("uses account default, respects explicit pause, and fails closed on settings failure", async () => {
+ const { getMemorySettings } = await import("@/features/settings/memory-settings-service");
+ vi.clearAllMocks(); mocks.findConversation.mockResolvedValue({id:"c"}); mocks.findAgent.mockResolvedValue(null); mocks.history.mockResolvedValue([]);
+ mocks.createMessage.mockResolvedValue({id:"msg"}); mocks.generate.mockResolvedValue({text:"OK",model:"test",provider:"test"}); mocks.autoSave.mockResolvedValue("m");
+ vi.mocked(getMemorySettings).mockResolvedValue({autoMemory:true});
+ await respondAsNexus({userId:"u",conversationId:"c",message:"Prefiro respostas objetivas"});expect(mocks.autoSave).toHaveBeenCalledOnce();
+ mocks.autoSave.mockClear();await respondAsNexus({userId:"u",conversationId:"c",message:"Prefiro respostas objetivas",autoMemory:false});expect(mocks.autoSave).not.toHaveBeenCalled();
+ vi.mocked(getMemorySettings).mockRejectedValueOnce(new Error("unavailable"));await respondAsNexus({userId:"u",conversationId:"c",message:"Prefiro respostas objetivas"});expect(mocks.autoSave).not.toHaveBeenCalled();
+ vi.mocked(getMemorySettings).mockResolvedValue({autoMemory:false});
 });

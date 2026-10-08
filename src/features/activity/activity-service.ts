@@ -21,6 +21,7 @@ export async function listActivity(userId: string, input: unknown) {
 
 export const activityLabels: Record<string, string> = {
   ACTION_PROPOSED: "Proposta de ação registrada", ACTION_CONFIRMED: "Ação confirmada e executada", ACTION_CANCELLED: "Proposta cancelada", ACTION_EXPIRED: "Proposta expirada",
+  MEMORY_SETTINGS_UPDATED: "Preferência de captura atualizada",
   MEMORY_CREATED: "Memória criada", MEMORY_UPDATED: "Memória corrigida", MEMORY_BLOCKED: "Memória bloqueada", MEMORY_UNBLOCKED: "Memória desbloqueada", MEMORY_DELETED: "Memória excluída",
   GOAL_CREATED: "Objetivo criado", GOAL_UPDATED: "Objetivo atualizado",
   PROJECT_CREATED: "Projeto criado", PROJECT_UPDATED: "Projeto atualizado", TASK_CREATED: "Tarefa criada", TASK_UPDATED: "Tarefa atualizada",
