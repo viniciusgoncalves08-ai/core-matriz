@@ -81,6 +81,7 @@ export function MemoryManager() {
     {!loading && !error && memories.map(memory => <article className="panel memory-result" key={memory.id}>
       <div className="actions"><span className="tag">{categories[memory.classification]}</span><span className="muted">{memory.status === "BLOCKED" ? "Bloqueada · fora do contexto" : memory.status === "ACTIVE" ? "Ativa" : "Substituída"}</span></div>
       <p className="preserve-text">{memory.content}</p>
+      <a href={`/memoria/${encodeURIComponent(memory.id)}`}>Abrir detalhes e revisar →</a>
       {memory.source && <p className="muted">Origem: {memory.source}</p>}
       {memory.conversationId && <a href={`/historico/${encodeURIComponent(memory.conversationId)}`}>Ver conversa de origem →</a>}
       <div className="actions">
