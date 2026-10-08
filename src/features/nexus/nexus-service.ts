@@ -1,3 +1,4 @@
+import { extractAutomaticPreference, saveAutomaticPreference } from "@/features/memory/automatic-preference";
 import { isMemorySnapshot } from "@/features/memory/memory-snapshot";
 import { isMemoryProfileRequest } from "@/features/context/memory-intent";
 import { respondWithMemoryQuery } from "@/features/memory/memory-query";
@@ -26,6 +27,7 @@ export async function respondAsNexus(params: {
   conversationId: string;
   message: string;
   agentId?: string;
+  autoMemory?: boolean;
   onDelta?: (text: string) => void;
   signal?: AbortSignal;
 }) {
@@ -101,7 +103,7 @@ export async function respondAsNexus(params: {
 
   const context = await buildContext(params.userId, params.message, { recentUserMessages: recentMessages.filter(message => message.role === "user").map(message => message.content), excludeMessageIds: recentMessages.filter(message => history.some(item => item.role === message.role && item.content === message.content)).map(message => message.id) });
 
-  await db.message.create({
+  const userMessage = await db.message.create({
     data: {
       conversationId: params.conversationId,
       role: "user",
@@ -128,13 +130,15 @@ export async function respondAsNexus(params: {
     );
 
     if (params.signal?.aborted) throw new AIError("AI_CANCELLED");
+    const preference = params.autoMemory && !params.agentId ? extractAutomaticPreference(params.message) : null;
     const assistantMessage = await db.$transaction(async tx => {
+      const capturedId = preference ? await saveAutomaticPreference(tx, { userId: params.userId, conversationId: params.conversationId, messageId: userMessage.id, content: preference }) : undefined;
       const savedMessage = await tx.message.create({
         data: {
           conversationId: params.conversationId,
           role: "assistant",
           content: result.text,
-          metadata: { provider: result.provider, model: result.model, retrieval: { memoryIds: (context.memories ?? []).map(item => item.id), conversationIds: [...new Set((context.conversations ?? []).map(item => item.conversationId))] }, ...(agent ? { agentId: agent.id, agentName: agent.name } : {}) },
+          metadata: { ...(capturedId ? { automaticMemoryId: capturedId } : {}), provider: result.provider, model: result.model, retrieval: { memoryIds: (context.memories ?? []).map(item => item.id), conversationIds: [...new Set((context.conversations ?? []).map(item => item.conversationId))] }, ...(agent ? { agentId: agent.id, agentName: agent.name } : {}) },
         },
       });
 

@@ -101,3 +101,8 @@ Busca real por título e texto de mensagens, filtrada por usuário, com paginaç
 
 ### Explorar memórias
 Pesquisa no servidor por conteúdo, resumo e origem, combinada com categoria e situação. Listagem paginada de 20 itens com contagem total, ordenação estável e versões recentes preservadas. Excluídas não aparecem; bloqueadas e substituídas continuam disponíveis para revisão. Ao remover o último item de uma página, a tela retorna à página anterior. Consultas são restritas ao dono, sem cache público, e podem ser canceladas ao mudar filtros. A busca é textual; não é recuperação semântica nem extração automática.
+
+### Captura automática inicial de preferências
+No chat principal, uma opção desativada por padrão permite capturar frases curtas em primeira pessoa começando com “prefiro” (até 300 caracteres), sem chamada adicional de IA. A opção vale para a tela/conversa atual e desativa ao recarregar ou iniciar outra. Não captura respostas do modelo, mensagens de agentes especializados nem comandos que seguem pelo fluxo de confirmação. Perguntas, múltiplas frases e alguns indicadores de informação sensível são descartados por regras conservadoras; não é um classificador completo de dados sensíveis.
+
+A gravação ocorre na transação da resposta concluída, com origem, mensagem de origem, versão e auditoria. Uma indicação persistente no chat informa que houve captura e leva à Memória para revisar, bloquear ou excluir. Duplicatas exatas (ignorando maiúsculas/minúsculas), inclusive bloqueadas/excluídas, não são recriadas. Preferências reformuladas ou contraditórias ainda não são conciliadas. Isso não substitui extração semântica geral, configuração sincronizada entre dispositivos ou detecção de contradições.

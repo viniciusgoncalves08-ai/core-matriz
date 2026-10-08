@@ -10,6 +10,7 @@ export const maxDuration = 60;
 
 const bodySchema = z.object({
   stream: z.boolean().optional(),
+  autoMemory: z.boolean().optional(),
   agentId: z.string().min(1).max(100).optional(),
   conversationId: z.string().min(1),
   message: z.string().trim().min(1).max(12000),
