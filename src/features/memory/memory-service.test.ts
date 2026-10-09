@@ -34,3 +34,12 @@ it("propagates audit failure so the transaction cannot commit silently", async (
   tx.auditLog.create.mockRejectedValueOnce(new Error("Audit unavailable"));
   await expect(createMemory({ userId: "u1", content: "Private memory", classification: "FACT" })).rejects.toThrow("Audit unavailable");
 });
+
+it("corrects classification, preserves blocking and records previous classification",async()=>{
+ vi.clearAllMocks();
+ tx.memory.findFirst.mockResolvedValue({id:"m",content:"Acho que funciona",summary:null,status:"BLOCKED",classification:"FACT"});
+ await updateMemory({userId:"u",memoryId:"m",content:"Acho que funciona",classification:"HYPOTHESIS"});
+ expect(tx.memory.update).toHaveBeenCalledWith({where:{id:"m"},data:expect.objectContaining({classification:"HYPOTHESIS",status:"BLOCKED"})});
+ expect(tx.memoryVersion.create).toHaveBeenCalledWith({data:expect.objectContaining({reason:expect.stringContaining("Categoria anterior: FACT")})});
+ expect(tx.auditLog.create).toHaveBeenCalledWith({data:expect.objectContaining({metadata:{previousClassification:"FACT",classification:"HYPOTHESIS"}})});
+});

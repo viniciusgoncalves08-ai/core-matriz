@@ -333,3 +333,5 @@ Cada aviso de captura automática leva a /memoria/{id}, protegido por sessão e 
 
 ### Guardar a mensagem anterior
 Pedidos isolados como “guarde isso na memória” ou “salve essa informação” selecionam apenas a última mensagem do usuário na mesma conversa e geram um cartão de revisão. Não selecionam a resposta da IA nem procuram arbitrariamente mensagens antigas. Perguntas terminadas em interrogação, pedidos conhecidos e referências repetidas são recusados com orientação para enviar “lembre que ...”. É resolução limitada por regras, não compreensão semântica geral. A confirmação permite editar e salva a referência da mensagem original na metadata da memória. Não requer chamada de IA para propor ou confirmar.
+
+Memórias existentes podem ter conteúdo e classificação corrigidos na lista ou nos detalhes. O histórico registra a categoria anterior e a auditoria registra a mudança; memórias bloqueadas continuam bloqueadas.

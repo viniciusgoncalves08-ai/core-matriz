@@ -62,6 +62,7 @@ export async function createMemory(input: {
 export async function updateMemory(input: {
   userId: string;
   memoryId: string;
+  classification?: MemoryClassification;
   content: string;
   summary?: string;
   reason?: string;
@@ -76,7 +77,7 @@ export async function updateMemory(input: {
         content: current.content,
         summary: current.summary,
         status: current.status,
-        reason: input.reason ?? "Substituída por nova versão",
+        reason: `${input.reason ?? "Substituída por nova versão"}${input.classification && input.classification !== current.classification ? ` · Categoria anterior: ${current.classification}` : ""}`,
       },
     });
 
@@ -84,13 +85,14 @@ export async function updateMemory(input: {
       where: { id: current.id },
       data: {
         content: input.content,
+        ...(input.classification ? { classification: input.classification } : {}),
         summary: input.summary,
         status: current.status,
         validFrom: new Date(),
         validUntil: null,
       },
     });
-    await tx.auditLog.create({ data: { userId: input.userId, action: "MEMORY_UPDATED", entityType: "memory", entityId: current.id } });
+    await tx.auditLog.create({ data: { userId: input.userId, action: "MEMORY_UPDATED", entityType: "memory", entityId: current.id, metadata: { previousClassification: current.classification, classification: input.classification ?? current.classification } } });
     return updated;
   });
 }
