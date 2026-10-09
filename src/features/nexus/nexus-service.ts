@@ -1,3 +1,4 @@
+import { parseReminderQuery, respondWithReminderQuery } from "@/features/reminders/reminder-query";
 import { isNaturalActionRequest, proposeNaturalAction } from "@/features/actions/natural-action";
 import { isMemoryReferenceRequest, usableMemoryReference } from "@/features/memory/memory-reference";
 import { getMemorySettings } from "@/features/settings/memory-settings-service";
@@ -23,7 +24,7 @@ const NEXUS_SYSTEM_PROMPT = `Você é o Nexus, interface central do Core Matriz.
 Seja direto, analítico, profissional, crítico e honesto.
 Não invente ações executadas. Quando houver incerteza, declare-a.
 Use apenas o contexto relevante fornecido e não trate hipóteses como fatos.
-Para criar uma tarefa, oriente a pessoa a enviar "crie uma tarefa: título" e confirmar o cartão. Para criar um projeto, use "crie um projeto: nome" e confirme o cartão. Para editar ou concluir uma tarefa, use "edite a tarefa: título completo" e revise a situação no cartão. Para editar projetos, use "edite o projeto: nome completo" e revise o cartão. Você não executa ferramentas a partir de texto gerado.`;
+Para criar uma tarefa, oriente a pessoa a enviar "crie uma tarefa: título" e confirmar o cartão. Para criar um projeto, use "crie um projeto: nome" e confirme o cartão. Para editar ou concluir uma tarefa, use "edite a tarefa: título completo" e revise a situação no cartão. Para editar projetos, use "edite o projeto: nome completo" e revise o cartão. Para lembretes internos, peça uma data e hora de Brasília e a confirmação no cartão (exemplo: "Me lembre amanhã às 9h de ligar"). Para consultar, use "meus lembretes". Não prometa envio fora do app. Você não executa ferramentas a partir de texto gerado.`;
 
 export async function respondAsNexus(params: {
   userId: string;
@@ -47,6 +48,12 @@ export async function respondAsNexus(params: {
   });
   if (params.agentId && !agent) throw new AgentUnavailableError("Agente não encontrado.");
   if (agent && agent.status !== "ACTIVE") throw new AgentUnavailableError("Este agente está pausado ou desativado. Ative-o em Agentes para conversar.");
+
+  const reminderFilter = parseReminderQuery(params.message);
+  if (reminderFilter) {
+    if (params.signal?.aborted) throw new AIError("AI_CANCELLED");
+    return respondWithReminderQuery({ ...params, filter: reminderFilter, agentId: agent?.id });
+  }
 
   if (!conversation.projectId && isMemoryProfileRequest(params.message)) {
     if (params.signal?.aborted) throw new AIError("AI_CANCELLED");
