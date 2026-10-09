@@ -2,8 +2,8 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 
-const categories = { FACT: "Fato", PREFERENCE: "Preferência", DECISION: "Decisão", HYPOTHESIS: "Hipótese", OBSERVED_PATTERN: "Padrão observado", CONTEXT: "Contexto", KNOWLEDGE: "Conhecimento", RESTRICTION: "Restrição", GOAL: "Objetivo" };
-type Category = keyof typeof categories;
+import { categories, type Category } from "./memory-categories";
+
 type Memory = { id: string; conversationId?: string | null; source?: string | null; content: string; summary: string | null; classification: Category; status: string; versions: { id: string; content: string; reason: string | null; createdAt: string }[] };
 
 export function MemoryManager() {
@@ -54,14 +54,14 @@ export function MemoryManager() {
   function submit(event: FormEvent) {
     event.preventDefault();
     if (busy || !content.trim()) return;
-    void mutate(editing ? `/api/memories/${editing}` : "/api/memories", editing ? "PATCH" : "POST", editing ? { action: "update", content, reason: "Editada pelo usuário" } : { content, classification: category, source: "Informada pelo usuário" });
+    void mutate(editing ? `/api/memories/${editing}` : "/api/memories", editing ? "PATCH" : "POST", editing ? { action: "update", content, classification: category, reason: "Editada pelo usuário" } : { content, classification: category, source: "Informada pelo usuário" });
   }
   return <div className="workspace-stack memory-workspace">
     <form className="panel workspace-form" onSubmit={submit}>
       <h2>{editing ? "Editar memória" : "Adicionar memória"}</h2>
       <label htmlFor="memory-content">O que o Nexus deve saber?</label>
       <textarea id="memory-content" required maxLength={12000} value={content} onChange={e => setContent(e.target.value)} disabled={busy} />
-      {!editing && <><label htmlFor="memory-category">Categoria</label><select id="memory-category" value={category} onChange={e => setCategory(e.target.value as Category)}>{Object.entries(categories).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></>}
+      {<><label htmlFor="memory-category">Categoria</label><select id="memory-category" value={category} onChange={e => setCategory(e.target.value as Category)}>{Object.entries(categories).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></>}
       <div className="actions"><button disabled={busy || !content.trim()}>{busy ? "Salvando…" : "Salvar memória"}</button>{editing && <button type="button" disabled={busy} onClick={() => { setEditing(null); setContent(""); }}>Cancelar edição</button>}</div>
     </form>
     {error && <p role="alert" className="chat-error">{error} <a href="/entrar">Entrar</a> <button disabled={busy} onClick={() => setRevision(value => value + 1)}>Tentar novamente</button></p>}
@@ -85,7 +85,7 @@ export function MemoryManager() {
       {memory.source && <p className="muted">Origem: {memory.source}</p>}
       {memory.conversationId && <a href={`/historico/${encodeURIComponent(memory.conversationId)}`}>Ver conversa de origem →</a>}
       <div className="actions">
-        <button disabled={busy} onClick={() => { setEditing(memory.id); setContent(memory.content); document.getElementById("memory-content")?.focus(); }}>Editar</button>
+        <button disabled={busy} onClick={() => { setEditing(memory.id); setContent(memory.content); setCategory(memory.classification); document.getElementById("memory-content")?.focus(); }}>Editar</button>
         <button disabled={busy} onClick={() => void mutate(`/api/memories/${memory.id}`, "PATCH", { action: memory.status === "BLOCKED" ? "unblock" : "block" })}>{memory.status === "BLOCKED" ? "Desbloquear" : "Bloquear"}</button>
         <button disabled={busy} onClick={() => { if (window.confirm("Excluir esta memória? Ela deixará de ser usada pelo Nexus.")) void mutate(`/api/memories/${memory.id}`, "DELETE"); }}>Excluir</button>
       </div>

@@ -19,7 +19,7 @@ export default async function MemoryDetailPage({ params }: { params: Promise<{id
         <p className="muted">Origem: {memory.source || "Não informada"}</p>
         <p className="muted">Criada: {date(memory.createdAt)} · Atualizada: {date(memory.updatedAt)} · Brasília</p>
         {memory.conversationId && <Link href={`/historico/${encodeURIComponent(memory.conversationId)}`}>Abrir conversa de origem →</Link>}
-        <MemoryDetailControls id={memory.id} content={memory.content} status={memory.status} />
+        <MemoryDetailControls id={memory.id} content={memory.content} status={memory.status} classification={memory.classification} />
       </article>
       <section className="panel"><h2>Últimos registros de versão</h2><p className="muted">Até 10 registros, do mais recente ao mais antigo.</p>{memory.versions.length ? memory.versions.map(version => <div className="version" key={version.id}><small>{date(version.createdAt)} · {version.reason || "Sem motivo informado"}</small><p className="preserve-text">{version.content}</p></div>) : <p>Nenhum registro de versão disponível.</p>}</section>
     </>}

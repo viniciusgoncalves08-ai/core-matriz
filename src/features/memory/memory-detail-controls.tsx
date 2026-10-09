@@ -1,8 +1,10 @@
 "use client";
 import { useState, type FormEvent } from "react";
+import { categories, type Category } from "./memory-categories";
 import { useRouter } from "next/navigation";
-export function MemoryDetailControls({ id, content, status }: { id: string; content: string; status: string }) {
+export function MemoryDetailControls({ id, content, status, classification }: { id: string; content: string; status: string; classification: Category }) {
   const router = useRouter();
+  const [category, setCategory] = useState<Category>(classification);
   const [draft, setDraft] = useState(content);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -18,11 +20,11 @@ export function MemoryDetailControls({ id, content, status }: { id: string; cont
     } catch(e) { setError(e instanceof Error ? e.message : "Falha na conexão."); }
     finally { setBusy(false); }
   }
-  function submit(event: FormEvent) { event.preventDefault(); if (draft.trim()) void save("PATCH", { action: "update", content: draft, reason: "Revisão pelo usuário na página da memória" }); }
+  function submit(event: FormEvent) { event.preventDefault(); if (draft.trim()) void save("PATCH", { action: "update", content: draft, classification: category, reason: "Revisão pelo usuário na página da memória" }); }
   return <div className="workspace-stack">
-    {editing && <form className="workspace-form" onSubmit={submit}><label>Corrigir conteúdo<textarea value={draft} onChange={e => setDraft(e.target.value)} maxLength={12000} required disabled={busy} /></label><div className="actions"><button disabled={busy || !draft.trim()}>Salvar correção</button><button type="button" disabled={busy} onClick={() => setEditing(false)}>Cancelar</button></div></form>}
+    {editing && <form className="workspace-form" onSubmit={submit}><label>Corrigir conteúdo<textarea value={draft} onChange={e => setDraft(e.target.value)} maxLength={12000} required disabled={busy} /></label><label>Categoria<select value={category} disabled={busy} onChange={e => setCategory(e.target.value as Category)}>{Object.entries(categories).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label><div className="actions"><button disabled={busy || !draft.trim()}>Salvar correção</button><button type="button" disabled={busy} onClick={() => setEditing(false)}>Cancelar</button></div></form>}
     <div className="actions">
-      <button disabled={busy} onClick={() => { setDraft(content); setEditing(true); }}>Editar</button>
+      <button disabled={busy} onClick={() => { setDraft(content); setCategory(classification); setEditing(true); }}>Editar</button>
       {(status === "ACTIVE" || status === "BLOCKED") && <button disabled={busy} onClick={() => void save("PATCH", { action: status === "BLOCKED" ? "unblock" : "block" })}>{status === "BLOCKED" ? "Desbloquear" : "Bloquear uso"}</button>}
       <button disabled={busy} onClick={() => { if (window.confirm("Excluir esta memória? Ela deixará de ser usada pelo Nexus. A conversa de origem será mantida.")) void save("DELETE"); }}>Excluir memória</button>
     </div>
