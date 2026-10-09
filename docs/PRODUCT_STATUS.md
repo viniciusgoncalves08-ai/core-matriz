@@ -121,3 +121,11 @@ Pedidos isolados como “guarde isso na memória” ou “salve essa informaçã
 ### Correção da classificação de memórias
 
 A edição de uma memória, na lista ou na página de detalhes, permite corrigir sua classificação. A alteração preserva o status de bloqueio, registra a categoria anterior no motivo da versão histórica e registra as duas categorias na auditoria. Não exige migration. Trata-se de correção manual; não há reclassificação semântica automática.
+
+### Ações em linguagem natural
+
+Pedidos diretos como “Preciso ligar para o fornecedor amanhã”, “Crie um projeto chamado Loja” e “Conclua a tarefa Ligar” passam por um planejador usando o provider/modelo já configurado. Uma chamada de geração retorna uma proposta JSON validada estritamente: criar/atualizar tarefa ou projeto. Datas relativas recebem a data atual de São Paulo. Não há nova dependência ou migration.
+
+O planejador não executa ferramentas. O usuário revisa o cartão persistido e confirma pelo fluxo existente, com isolamento por usuário, expiração, proteção contra confirmação duplicada e atualização concorrente. Atualizações localizam nome completo exato ou identificador; ambiguidades exigem esclarecimento. Campos omitidos são preservados. Respostas inválidas falham sem criar proposta. Comandos explícitos anteriores continuam disponíveis sem chamada de IA.
+
+Limites: uma ação por mensagem; sem resolução de pronomes, lembretes, recorrência, objetivos ou vínculo de tarefa com projeto neste fluxo. A interpretação usa a cota do provider e depende de sua disponibilidade. Não confundir prazo com notificação. Testes usam respostas de modelo controladas; qualidade do modelo real requer uso monitorado.

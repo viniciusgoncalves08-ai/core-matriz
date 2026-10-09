@@ -1,3 +1,4 @@
+import { isNaturalActionRequest, proposeNaturalAction } from "@/features/actions/natural-action";
 import { isMemoryReferenceRequest, usableMemoryReference } from "@/features/memory/memory-reference";
 import { getMemorySettings } from "@/features/settings/memory-settings-service";
 import { extractAutomaticPreference, saveAutomaticPreference } from "@/features/memory/automatic-preference";
@@ -105,6 +106,11 @@ export async function respondAsNexus(params: {
   if (projectQuery) {
     if (params.signal?.aborted) throw new AIError("AI_CANCELLED");
     return proposeProjectEdit({ ...params, query: projectQuery, agentId: agent?.id, agentName: agent?.name });
+  }
+
+  if (isNaturalActionRequest(params.message)) {
+    if (params.signal?.aborted) throw new AIError("AI_CANCELLED");
+    return proposeNaturalAction({ ...params, agentId: agent?.id, agentName: agent?.name, preferredModel: agent?.preferredModel });
   }
 
   const recentMessages = await db.message.findMany({
