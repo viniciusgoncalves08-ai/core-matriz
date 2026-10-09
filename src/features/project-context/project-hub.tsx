@@ -1,0 +1,12 @@
+import Link from "next/link";
+import { getProjectHub } from "./project-context-service";
+import { goalStatuses } from "@/features/goals/goal-schema";
+export async function ProjectHub({ userId, projectId }: { userId: string; projectId: string }) {
+  const data = await getProjectHub(userId, projectId);
+  return <section className="workspace-stack" aria-label="Contexto conectado do projeto">
+    <div className="panel"><h2>Converse sobre este projeto</h2><p>Abra uma conversa com as memórias, tarefas, objetivos e trechos de conversas vinculadas disponíveis para o Nexus.</p><Link className="button-link" href={`/nexus?projectId=${encodeURIComponent(projectId)}`}>Nova conversa neste projeto →</Link><p className="muted">O contexto usa uma seleção limitada de registros. Você decide os vínculos; nenhuma ação é executada sem confirmação.</p></div>
+    <section className="panel"><h2>Conversas · {data.conversationCount}</h2>{data.conversations.length ? <ul>{data.conversations.map(item => <li key={item.id}><Link href={`/historico/${encodeURIComponent(item.id)}`}>{item.title || "Conversa sem título"}</Link></li>)}</ul> : <p>Nenhuma conversa vinculada. Comece uma acima ou vincule uma conversa existente pelo controle no chat.</p>}{data.conversationCount > data.conversations.length && <p>Exibindo as 20 mais recentes. <Link href="/historico">Pesquisar no histórico</Link></p>}</section>
+    <section className="panel"><h2>Memórias · {data.memoryCount}</h2>{data.memories.length ? <ul>{data.memories.map(item => <li key={item.id}><Link href={`/memoria/${encodeURIComponent(item.id)}`}>{(item.summary || item.content).slice(0, 150)}</Link>{item.status !== "ACTIVE" && <span> · Fora do contexto</span>}</li>)}</ul> : <p>Nenhuma memória vinculada. Abra um registro em Memória e confirme o projeto relacionado.</p>}<p className="muted">Até 20 registros recentes para revisão. Apenas memórias ativas e válidas entram no contexto.</p><Link href="/memoria">Organizar memórias →</Link></section>
+    <section className="panel"><h2>Objetivos · {data.goalCount}</h2>{data.goals.length ? <ul>{data.goals.map(item => <li key={item.id}>{item.title} · {item.progress}% · {goalStatuses[item.status as keyof typeof goalStatuses] ?? item.status}</li>)}</ul> : <p>Nenhum objetivo vinculado.</p>}<p className="muted">Até 20 objetivos recentes.</p><Link href="/objetivos">Gerenciar objetivos →</Link></section>
+  </section>;
+}

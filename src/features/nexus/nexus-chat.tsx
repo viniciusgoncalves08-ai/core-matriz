@@ -1,5 +1,6 @@
 "use client";
 
+import { ProjectLinkControl } from "@/features/project-context/project-link-control";
 import { FormEvent, useState, useRef, useEffect } from "react";
 
 import Link from "next/link";
@@ -12,7 +13,7 @@ import { readNexusResponse } from "./read-response";
 
 type ChatMessage = { role: "user" | "assistant"; content: string; sources?: string[]; automaticMemoryId?: string };
 
-export function NexusChat({ initialConversationId = null, initialMessages = [], agentId, agentName = "Nexus" }: { agentId?: string; agentName?: string; initialConversationId?: string | null; initialMessages?: ChatMessage[] }) {
+export function NexusChat({ initialConversationId = null, initialMessages = [], initialProject, agentId, agentName = "Nexus" }: { initialProject?: { id: string; name: string }; agentId?: string; agentName?: string; initialConversationId?: string | null; initialMessages?: ChatMessage[] }) {
   const abort = useRef<AbortController | null>(null);
   const lock = useRef(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -21,6 +22,7 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
   const [voiceReset, setVoiceReset] = useState(0);
   const [partial, setPartial] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
+  const [projectBusy, setProjectBusy] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [autoMemory, setAutoMemory] = useState<boolean | undefined>(undefined);
@@ -47,7 +49,7 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
       signal: abort.current?.signal,
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title: title.slice(0, 120) }),
+      body: JSON.stringify({ title: title.slice(0, 120), ...(initialProject ? { projectId: initialProject.id } : {}) }),
     });
     if (!response.ok) throw new Error(response.status === 401 ? "Faça login para conversar com o Nexus." : "Não foi possível criar a conversa.");
     const data = await response.json();
@@ -59,7 +61,7 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
   async function submit(event: FormEvent) {
     event.preventDefault();
     const message = input.trim();
-    if (!message || lock.current || listening) return;
+    if (!message || lock.current || listening || projectBusy) return;
     lock.current = true;
     abort.current = new AbortController();
     setPartial("");
@@ -103,8 +105,9 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
         <span className="core-caption">{agentName}</span>
         <p className="core-status" role="status">{loading ? "Organizando sua resposta" : voiceState === "listening" ? "Ouvindo você" : voiceState === "speaking" ? "Falando com você" : voiceState === "starting" ? "Conectando áudio" : "Pronto para conversar"}</p>
       </div>
+      {conversationId ? <ProjectLinkControl key={conversationId} kind="conversation" id={conversationId} disabled={loading} onBusy={setProjectBusy} /> : initialProject ? <p className="panel">Esta conversa será vinculada ao projeto <strong>{initialProject.name}</strong> ao enviar a primeira mensagem. <Link href={`/projetos/${encodeURIComponent(initialProject.id)}`}>Abrir projeto</Link></p> : <p className="muted">Para conversar com o contexto de um projeto, abra-o em <Link href="/projetos">Projetos</Link>. Você também poderá vincular esta conversa depois da primeira mensagem.</p>}
       {messages.length === 0 && <div className="nexus-starters" aria-label="Começar conversa">{[["Seu dia", "resumo do dia", "Prazos e prioridades"], ["Sua memória", "O que você sabe sobre mim?", "Contexto que acompanha você"], ["Próximo passo", "Me ajude a organizar meus projetos", "Transforme ideias em direção"]].map(([title, prompt, description]) => <button type="button" disabled={loading || listening} key={title} onClick={() => setInput(prompt)}><span>{title}</span><small>{description}</small><b aria-hidden="true">↗</b></button>)}</div>}
-      <div className="actions"><Link href={agentId ? `/agentes/${agentId}` : "/nexus"} onClick={event => { if (loading) { event.preventDefault(); return; } setVoiceReset(v => v + 1); setAutoMemory(undefined); setConversationId(null); setMessages([]); setPartial(""); setError(null); setInput(""); }}>Nova conversa</Link><Link href="/historico">Histórico</Link></div>
+      <div className="actions"><Link href={agentId ? `/agentes/${agentId}` : "/nexus"} onClick={event => { if (loading || projectBusy) { event.preventDefault(); return; } setVoiceReset(v => v + 1); setAutoMemory(undefined); setConversationId(null); setMessages([]); setPartial(""); setError(null); setInput(""); }}>Nova conversa</Link><Link href="/historico">Histórico</Link></div>
       {!agentId && <div className="panel auto-memory-option"><label><input type="checkbox" checked={autoMemory ?? defaultMemory} disabled={loading || !memorySettingsReady} onChange={event => setAutoMemory(event.target.checked)} /> Salvar preferências explícitas automaticamente nesta conversa</label><p className="muted">Primeira versão: frases curtas como “prefiro respostas objetivas”. Ative para salvar após a resposta, sem confirmação por item. Você pode revisar, bloquear ou excluir em Memória. O padrão vem da sua conta; alterações aqui valem só nesta conversa.</p><Link href="/configuracoes">Configurar padrão da conta →</Link>{!memorySettingsReady && <p className="muted">Captura desativada até carregar a configuração. Se persistir, recarregue a página.</p>}</div>}
       {messages.length > 0 && (
         <div className="chat-messages">
@@ -131,10 +134,10 @@ export function NexusChat({ initialConversationId = null, initialMessages = [], 
           placeholder={`Fale com ${agentName}...`}
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          disabled={loading || listening}
+          disabled={loading || listening || projectBusy}
           maxLength={12000}
         />
-        <button type="submit" disabled={loading || listening || !input.trim()}>{loading ? "Respondendo…" : "Enviar"}</button>
+        <button type="submit" disabled={loading || listening || projectBusy || !input.trim()}>{loading ? "Respondendo…" : "Enviar"}</button>
       </form>
     </div>
   );
