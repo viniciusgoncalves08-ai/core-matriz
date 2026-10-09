@@ -129,3 +129,11 @@ Pedidos diretos como “Preciso ligar para o fornecedor amanhã”, “Crie um p
 O planejador não executa ferramentas. O usuário revisa o cartão persistido e confirma pelo fluxo existente, com isolamento por usuário, expiração, proteção contra confirmação duplicada e atualização concorrente. Atualizações localizam nome completo exato ou identificador; ambiguidades exigem esclarecimento. Campos omitidos são preservados. Respostas inválidas falham sem criar proposta. Comandos explícitos anteriores continuam disponíveis sem chamada de IA.
 
 Limites: uma ação por mensagem; sem resolução de pronomes, lembretes, recorrência, objetivos ou vínculo de tarefa com projeto neste fluxo. A interpretação usa a cota do provider e depende de sua disponibilidade. Não confundir prazo com notificação. Testes usam respostas de modelo controladas; qualidade do modelo real requer uso monitorado.
+
+### Central de alertas internos de prazo
+
+Home e `/alertas` consultam tarefas abertas atrasadas e objetivos ativos abaixo de 100% com prazo vencido. A comparação usa o dia civil de São Paulo. Alertas são derivados dos registros atuais; concluir, cancelar ou mudar o prazo altera a próxima consulta, sem armazenar cópias desatualizadas de títulos.
+
+A leitura persiste em `DeadlineAlertRead`, com chave composta usuário + tipo/registro/data. A confirmação valida propriedade e prazo atual, é idempotente e gera uma auditoria apenas na primeira leitura. Datas diferentes geram novos avisos; voltar à mesma data preserva a leitura anterior. Há limite explícito de 100 tarefas e 100 objetivos mais antigos por consulta. Não há exclusão dos itens ao marcar como lido.
+
+Migration: `202610090001_deadline_alert_reads`. Executada pelo build de produção existente. Sem cron, e-mail, push, processo em segundo plano ou nova API paga. Consulta ao abrir e por botão Atualizar; não promete aviso com app fechado. Teste PostgreSQL no CI cobre concorrência, isolamento, reagendamento e conclusão.
