@@ -31,3 +31,11 @@ it("shows editing controls and paused/completed options only for an update",()=>
  expect(html).toContain("Arquivado");
  expect(html).not.toContain("Confirmar e criar projeto");
 });
+
+it("shows goal review fields and the resolved project before confirmation",()=>{
+ const action:ActionView={id:"g",version:1,tool:"goal.create",permission:"CONFIRM",status:"pending",expiresAt:"2026-12-25T00:00:00.000Z",projectName:"Estudos",input:{title:"Terminar curso",description:"Aulas",category:"Pessoal",status:"active",progress:40,dueAt:"2026-12-20",projectId:"project"}};
+ const html=renderToStaticMarkup(<ActionCard action={action} onUpdate={()=>{}} />);
+ expect(html).toContain("Confirmar e criar objetivo");expect(html).toContain("Progresso (%)");expect(html).toContain("Estudos");
+ const saved=renderToStaticMarkup(<ActionCard action={{...action,status:"succeeded",goalId:"saved"}} onUpdate={()=>{}} />);
+ expect(saved).toContain('/objetivos');expect(saved).toContain('/projetos/project');expect(saved).not.toContain("Confirmar e criar objetivo");
+});
