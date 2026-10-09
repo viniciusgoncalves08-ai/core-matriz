@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { actionRecord, actionDecision, suggestMemoryClassification, taskUpdateInput, memoryActionInput, taskActionInput, projectActionInput, projectUpdateInput, type ConfirmedAction, type ActionView } from "./action-schema";
@@ -19,13 +20,13 @@ const expiry = () => new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 export async function proposeMemory(params: ProposalParams & { content: string; sourceMessageId?: string }) {
   return proposeAction(params, { version: 1, tool: "memory.create", ...(params.sourceMessageId ? { sourceMessageId: params.sourceMessageId } : {}), permission: "CONFIRM", status: "pending", expiresAt: expiry(), input: memoryActionInput.parse({ content: params.content, classification: suggestMemoryClassification(params.content) }) });
 }
-export async function proposeTask(params: ProposalParams & { title: string }) {
-  return proposeAction(params, { version: 1, tool: "task.create", permission: "CONFIRM", status: "pending", expiresAt: expiry(), input: taskActionInput.parse({ title: params.title }) });
+export async function proposeTask(params: ProposalParams & { title: string; input?: z.input<typeof taskActionInput> }) {
+  return proposeAction(params, { version: 1, tool: "task.create", permission: "CONFIRM", status: "pending", expiresAt: expiry(), input: taskActionInput.parse(params.input ?? { title: params.title }) });
 }
-export async function proposeProject(params: ProposalParams & { name: string }) {
-  return proposeAction(params, { version: 1, tool: "project.create", permission: "CONFIRM", status: "pending", expiresAt: expiry(), input: projectActionInput.parse({ name: params.name }) });
+export async function proposeProject(params: ProposalParams & { name: string; input?: z.input<typeof projectActionInput> }) {
+  return proposeAction(params, { version: 1, tool: "project.create", permission: "CONFIRM", status: "pending", expiresAt: expiry(), input: projectActionInput.parse(params.input ?? { name: params.name }) });
 }
-export async function proposeProjectEdit(params: ProposalParams & { query: string }) {
+export async function proposeProjectEdit(params: ProposalParams & { query: string; changes?: Partial<z.input<typeof projectUpdateInput>> }) {
   const projects = await db.project.findMany({
     where: { userId: params.userId, OR: [{ id: params.query }, { name: { equals: params.query, mode: "insensitive" } }] },
     take: 2, select: { id: true, name: true, description: true, status: true, updatedAt: true },
@@ -33,9 +34,9 @@ export async function proposeProjectEdit(params: ProposalParams & { query: strin
   if (!projects.length) throw new ProjectSelectionError("Não encontrei um projeto com esse nome na sua conta. Confira o nome completo em Projetos.");
   if (projects.length > 1) throw new ProjectSelectionError("Há mais de um projeto com esse nome. Abra o projeto desejado e envie /editar-projeto seguido do identificador que aparece no final do endereço.");
   const project = projects[0];
-  return proposeAction(params, { version: 1, tool: "project.update", permission: "CONFIRM", status: "pending", expiresAt: expiry(), projectId: project.id, expectedUpdatedAt: project.updatedAt.toISOString(), input: projectUpdateInput.parse({ name: project.name, description: project.description ?? "", status: project.status }) });
+  return proposeAction(params, { version: 1, tool: "project.update", permission: "CONFIRM", status: "pending", expiresAt: expiry(), projectId: project.id, expectedUpdatedAt: project.updatedAt.toISOString(), input: projectUpdateInput.parse({ name: project.name, description: project.description ?? "", status: project.status, ...params.changes }) });
 }
-export async function proposeTaskEdit(params: ProposalParams & { query: string }) {
+export async function proposeTaskEdit(params: ProposalParams & { query: string; changes?: Partial<z.input<typeof taskUpdateInput>> }) {
   const tasks = await db.task.findMany({
     where: { userId: params.userId, OR: [{ id: params.query }, { title: { equals: params.query, mode: "insensitive" } }] },
     take: 2, select: { id: true, title: true, dueAt: true, priority: true, status: true, updatedAt: true },
@@ -43,7 +44,7 @@ export async function proposeTaskEdit(params: ProposalParams & { query: string }
   if (!tasks.length) throw new ProjectSelectionError("Não encontrei uma tarefa com esse título na sua conta. Confira o título completo em Tarefas.");
   if (tasks.length > 1) throw new ProjectSelectionError("Há mais de uma tarefa com esse título. Diferencie os títulos em Tarefas e envie o pedido novamente.");
   const task = tasks[0];
-  return proposeAction(params, { version: 1, tool: "task.update", permission: "CONFIRM", status: "pending", expiresAt: expiry(), taskId: task.id, expectedUpdatedAt: task.updatedAt.toISOString(), input: taskUpdateInput.parse({ title: task.title, dueAt: task.dueAt?.toISOString().slice(0, 10) ?? null, priority: task.priority, status: task.status }) });
+  return proposeAction(params, { version: 1, tool: "task.update", permission: "CONFIRM", status: "pending", expiresAt: expiry(), taskId: task.id, expectedUpdatedAt: task.updatedAt.toISOString(), input: taskUpdateInput.parse({ title: task.title, dueAt: task.dueAt?.toISOString().slice(0, 10) ?? null, priority: task.priority, status: task.status, ...params.changes }) });
 }
 async function proposeAction(params: ProposalParams, action: ConfirmedAction) {
   return db.$transaction(async tx => {
@@ -51,7 +52,7 @@ async function proposeAction(params: ProposalParams, action: ConfirmedAction) {
     await tx.message.create({ data: { conversationId: params.conversationId, role: "user", content: params.message } });
     const message = await tx.message.create({ data: {
       conversationId: params.conversationId, role: "assistant",
-      content: action.tool === "task.update" ? "Localizei a tarefa. Revise prazo, prioridade e situação no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "memory.create" ? (action.sourceMessageId ? "Selecionei a sua mensagem anterior, não a resposta da IA. Revise o conteúdo e a classificação no cartão e confirme. Nada foi salvo ainda." : "Preparei uma memória para revisão. Confira o conteúdo e a classificação no cartão e confirme para salvar. A memória ainda não foi gravada.") : action.tool === "project.update" ? "Localizei o projeto. Revise as alterações no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "project.create" ? "Preparei uma proposta de projeto. Revise nome, descrição e situação no cartão e confirme para salvar. Nenhum projeto foi criado ainda." : "Preparei uma proposta de tarefa. Revise o cartão de ação e confirme para criá-la. Nenhuma tarefa foi criada ainda. Datas mencionadas no título não definem o prazo automaticamente.",
+      content: action.tool === "task.update" ? "Localizei a tarefa. Revise prazo, prioridade e situação no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "memory.create" ? (action.sourceMessageId ? "Selecionei a sua mensagem anterior, não a resposta da IA. Revise o conteúdo e a classificação no cartão e confirme. Nada foi salvo ainda." : "Preparei uma memória para revisão. Confira o conteúdo e a classificação no cartão e confirme para salvar. A memória ainda não foi gravada.") : action.tool === "project.update" ? "Localizei o projeto. Revise as alterações no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "project.create" ? "Preparei uma proposta de projeto. Revise nome, descrição e situação no cartão e confirme para salvar. Nenhum projeto foi criado ainda." : "Preparei uma proposta de tarefa. Revise o cartão de ação e confirme para criá-la. Nenhuma tarefa foi criada ainda. Confira especialmente o prazo e a prioridade antes de confirmar. Isto não agenda notificações.",
       metadata: { action, ...(params.agentId ? { agentId: params.agentId, agentName: params.agentName ?? "Nexus" } : {}) },
     } });
     await tx.conversation.update({ where: { id: params.conversationId }, data: { updatedAt: new Date() } });
