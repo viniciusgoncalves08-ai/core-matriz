@@ -1,8 +1,10 @@
+import { buildProjectContext } from "@/features/project-context/project-context-service";
 import { isMemoryProfileRequest } from "./memory-intent";
 import { expandRecallTerms, recallConversations, type ConversationExcerpt } from "./conversation-recall";
 import { db } from "@/lib/db";
 
 export type NexusContext = {
+  projectScope?: { id: string; name: string; totals: { memories: number; tasks: number; openTasks: number; goals: number; conversations: number } };
   conversations?: ConversationExcerpt[];
   memories: Array<{ id: string; summary: string | null; content: string; classification: string; source?: string | null; confidence?: number }>;
   projects: Array<{ id: string; name: string; description: string | null; status: string }>;
@@ -22,7 +24,8 @@ export function extractContextTerms(message: string): string[] {
   )].slice(0, 8);
 }
 
-export async function buildContext(userId: string, message: string, options: { recentUserMessages?: string[]; excludeMessageIds?: string[] } = {}): Promise<NexusContext> {
+export async function buildContext(userId: string, message: string, options: { projectId?: string | null; conversationId?: string; recentUserMessages?: string[]; excludeMessageIds?: string[] } = {}): Promise<NexusContext> {
+  if (options.projectId) return buildProjectContext(userId, options.projectId, options.conversationId);
   const profileRequest = isMemoryProfileRequest(message);
   const ownTerms = profileRequest ? [] : extractContextTerms(message);
   const followUp = !profileRequest && /(?:isso|esse|essa|lembra|lembro|anterior|aquele|aquela|plano)/iu.test(message);
@@ -82,7 +85,7 @@ export async function buildContext(userId: string, message: string, options: { r
 
 export function serializeContext(context: NexusContext): string {
   // Budget is measured on serialized characters (not an exact token count).
-  const bounded: NexusContext = { memories: [], projects: [], tasks: [], goals: [], conversations: [] };
+  const bounded: NexusContext = { ...(context.projectScope ? { projectScope: context.projectScope } : {}), memories: [], projects: [], tasks: [], goals: [], conversations: [] };
   for (const key of ["memories", "conversations", "projects", "tasks", "goals"] as const) {
     for (const item of context[key] ?? []) {
       const candidate = Object.fromEntries(Object.entries(item).map(([name, value]) =>

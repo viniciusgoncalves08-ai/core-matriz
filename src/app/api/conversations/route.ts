@@ -1,9 +1,10 @@
+import { createProjectConversation, ProjectLinkNotFound } from "@/features/project-context/project-link-service";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 
-const createSchema = z.object({ title: z.string().trim().max(120).optional() });
+const createSchema = z.object({ title: z.string().trim().max(120).optional(), projectId: z.string().min(1).max(100).nullable().optional() }).strict();
 
 export async function GET(request: Request) {
   const headers = { "Cache-Control": "private, no-store" };
@@ -33,11 +34,10 @@ export async function POST(request: Request) {
     const userId = await getSessionUserId();
     if (!userId) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     const input = createSchema.parse(await request.json());
-    const conversation = await db.conversation.create({
-      data: { userId, title: input.title ?? "Nova conversa" },
-    });
+    const conversation = input.projectId ? await createProjectConversation(userId, input.title ?? "Nova conversa", input.projectId) : await db.conversation.create({ data: { userId, title: input.title ?? "Nova conversa" } });
     return NextResponse.json({ conversation }, { status: 201 });
   } catch (error) {
+    if (error instanceof ProjectLinkNotFound) return NextResponse.json({ error: "Projeto indisponível" }, { status: 404 });
     if (error instanceof z.ZodError) return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }

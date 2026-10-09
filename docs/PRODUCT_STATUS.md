@@ -15,7 +15,7 @@ Sem Lovable. Provedores de IA são integrações do produto, não desenvolvedore
 | Identidade (7) | Nome e instruções editáveis no agente | Configuração central de nome/avatar/voz/proatividade; ainda existem textos Nexus fixos |
 | Memória (9–12) | Classificação, conteúdo, resumo, origem, importância, confiança, bloqueio, edição e versões, exclusão lógica | Relações com entidades, tags na UI, marcar incorreta, validade completa, inferência com evidências e extração automática controlada pelo Nexus |
 | Context Engine (13) | Filtros textuais por usuário, validade temporal da memória, origem/confiança, objetivos e trechos de conversas anteriores relevantes, até 12 mil caracteres serializados de contexto e até 16 mil de histórico recente | Intent Engine, entidades, ranking híbrido, orçamento por tokens exatos, relações e arquivos; busca ainda lexical, sem compreensão semântica |
-| Busca / embeddings (14–15) | Busca no servidor em memórias e conversas; busca local em projetos e tarefas | Busca global no servidor, períodos/entidades, full-text e busca semântica; pgvector ainda não instalado |
+| Busca / embeddings (14–15) | Busca global no servidor em memórias, conversas, tarefas, projetos e objetivos | Períodos/entidades, paginação global, full-text e busca semântica; pgvector ainda não instalado |
 | Agent Hub (16–19) | Criar/editar, pausar/ativar, prompt/modelo/temperatura e conversa individual com identidade persistente | Coordenação automática pelo Nexus, execuções encadeadas, catálogo de ferramentas/permissões e painel de execuções |
 | Providers / Router (20–23) | Interface comum generate/stream/healthCheck; OpenAI/Gemini; fallback técnico explícito, sem misturar streams | Anthropic, embeddings/toolCall, seleção por capacidades/custo e orçamento; nenhuma troca paga automática no fluxo atual |
 | Permissões / ações / tools (24–26) | Propostas de criação de tarefas/projetos e edição de projetos por comando explícito, confirmação autenticada, cancelamento, expiração, idempotência e auditoria | Motor genérico de permissões e novas ferramentas. Não há ferramentas externas funcionando |
@@ -35,17 +35,20 @@ Sem Lovable. Provedores de IA são integrações do produto, não desenvolvedore
 - Provider implementado não significa que uma chave real esteja configurada ou que a resposta ao vivo foi validada.
 - Testes de streaming usam respostas simuladas apenas nos testes; produção só consome provedores reais.
 - Fase 1 ainda parcial pelas lacunas de memória/contexto, segurança e confirmação descritas acima.
-- Fase 2 parcial: projetos, tarefas, histórico e resumo; inclui objetivos básicos; faltam notificações e busca global.
+- Fase 2 parcial: projetos, tarefas, histórico e resumo; inclui objetivos básicos; faltam lembretes programados e notificações fora do app.
 - Fases 3–5 não estão entregues. Não há automação, execução multiagente nem integração externa fingida.
 
-## Ordem de continuidade
+## Ordem de continuidade — reafirmada pelo usuário em 09/10/2026
 
-1. Fechar contexto e memória: validade, limites, relevância, relações e origem; melhorar autenticação/abuso.
-2. Ferramentas internas e Permission Engine: uma ação real por vez, confirmação, execução idempotente e auditoria consultável.
-3. Objetivos, busca global e notificações internas ligadas a eventos reais.
-4. Intent Engine e orquestração progressiva de agentes usando as ferramentas verificadas.
-5. Integrações reais: arquivos/web/Calendar, depois empresas. Credenciais somente quando necessárias para ativação.
-6. Novos canais e voz depois da base de permissões e execução estar verificada.
+Priorizar entregas completas. Refinamentos isolados só entram quando necessários para o fluxo.
+
+1. **Ações por conversa:** tarefas, projetos e objetivos já possuem propostas por linguagem natural, revisão, confirmação e auditoria. Restam pedidos compostos, referências ambíguas e novas ferramentas.
+2. **Acompanhamento e lembretes:** central interna de atrasos com leitura persistente entregue; faltam lembretes agendados, preferências e notificações fora do app. Não confundir consulta de atrasos com execução programada.
+3. **Contexto conectado (entrega atual):** vínculos explícitos de conversas e memórias com projetos, hub do projeto e contexto por relações. Tarefas e objetivos já vinculados participam. Ainda não há relacionamento inferido automaticamente, grafo geral de entidades ou busca semântica.
+4. **Busca global:** entregue nos cinco módulos, textual e limitada a 10 resultados por categoria. Filtros avançados, paginação global e ranking semântico continuam pendentes.
+5. **Integrações:** arquivos e Google Calendar após a estabilização dos fluxos anteriores. Preparar e validar o fluxo completo antes de solicitar credenciais necessárias à ativação.
+
+Os registros históricos abaixo documentam entregas anteriores e não substituem esta ordem.
 
 ## Validação desta alteração
 

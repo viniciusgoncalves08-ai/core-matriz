@@ -21,7 +21,7 @@ describe("continuidade do Nexus", () => {
   it("não recupera mensagens nem chama IA para conversa de outro usuário", async () => {
     mocks.findConversation.mockResolvedValue(null);
     await expect(respondAsNexus({ userId: "u2", conversationId: "c1", message: "Olá" })).rejects.toThrow("sem permissão");
-    expect(mocks.findConversation).toHaveBeenCalledWith({ where: { id: "c1", userId: "u2" }, select: { id: true } });
+    expect(mocks.findConversation).toHaveBeenCalledWith({ where: { id: "c1", userId: "u2" }, select: { id: true, projectId: true } });
     expect(mocks.history).not.toHaveBeenCalled();
     expect(mocks.generate).not.toHaveBeenCalled();
   });
@@ -189,4 +189,15 @@ it("proposes the previous user message for a memory reference without a model ca
 it.each([{rows:[]},{rows:[{id:"s",content:"Guarde isso na memória"}]},{rows:[{id:"s",content:"Qual meu objetivo?"}]}])("asks for explicit content when reference is missing or ambiguous",async ({rows})=>{
  vi.clearAllMocks();mocks.findConversation.mockResolvedValue({id:"c"});mocks.findAgent.mockResolvedValue(null);mocks.history.mockResolvedValue(rows);
  await expect(respondAsNexus({userId:"u",conversationId:"c",message:"guarde isso"})).rejects.toThrow("lembre que");expect(mocks.proposeMemory).not.toHaveBeenCalled();expect(mocks.generate).not.toHaveBeenCalled();
+});
+
+it("uses the conversation's saved project rather than global memory shortcuts", async () => {
+  const { buildContext } = await import("@/features/context/context-engine");
+  mocks.findConversation.mockResolvedValue({ id: "c1", projectId: "saved-project" });
+  mocks.findAgent.mockResolvedValue(null); mocks.history.mockResolvedValue([]);
+  mocks.memoryQuery.mockClear();
+  mocks.generate.mockResolvedValue({ text: "Contexto do projeto", model: "test", provider: "test" });
+  await respondAsNexus({ userId: "owner", conversationId: "c1", message: "Liste minhas memórias" });
+  expect(buildContext).toHaveBeenCalledWith("owner", "Liste minhas memórias", expect.objectContaining({ projectId: "saved-project", conversationId: "c1" }));
+  expect(mocks.memoryQuery).not.toHaveBeenCalled();
 });

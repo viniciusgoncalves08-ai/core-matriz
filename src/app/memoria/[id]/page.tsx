@@ -1,3 +1,4 @@
+import { ProjectLinkControl } from "@/features/project-context/project-link-control";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
@@ -21,6 +22,7 @@ export default async function MemoryDetailPage({ params }: { params: Promise<{id
         {memory.conversationId && <Link href={`/historico/${encodeURIComponent(memory.conversationId)}`}>Abrir conversa de origem →</Link>}
         <MemoryDetailControls id={memory.id} content={memory.content} status={memory.status} classification={memory.classification} />
       </article>
+      <ProjectLinkControl kind="memory" id={memory.id} />
       <section className="panel"><h2>Últimos registros de versão</h2><p className="muted">Até 10 registros, do mais recente ao mais antigo.</p>{memory.versions.length ? memory.versions.map(version => <div className="version" key={version.id}><small>{date(version.createdAt)} · {version.reason || "Sem motivo informado"}</small><p className="preserve-text">{version.content}</p></div>) : <p>Nenhum registro de versão disponível.</p>}</section>
     </>}
   </div></AppShell>;
