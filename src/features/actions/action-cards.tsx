@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { GoalActionCard } from "./goal-action-card";
 import { TaskUpdateCard } from "./task-update-card";
 import { MemoryActionCard } from "./memory-action-card";
 import type { ActionView } from "./action-schema";
@@ -31,11 +32,12 @@ export function ActionCards({ conversationId, refresh }: { conversationId: strin
   </section>;
 }
 export function ActionCard({ action, onUpdate }: { action: ActionView; onUpdate: (action: ActionView) => void }) {
+  if (action.tool === "goal.create" || action.tool === "goal.update") return <GoalActionCard action={action} onUpdate={onUpdate} />;
   if (action.tool === "task.update") return <TaskUpdateCard action={action} onUpdate={onUpdate} />;
   if (action.tool === "memory.create") return <MemoryActionCard action={action} onUpdate={onUpdate} />;
   return <OrganizationActionCard action={action} onUpdate={onUpdate} />;
 }
-function OrganizationActionCard({ action, onUpdate }: { action: Exclude<ActionView, { tool: "memory.create" | "task.update" }>; onUpdate: (action: ActionView) => void }) {
+function OrganizationActionCard({ action, onUpdate }: { action: Exclude<ActionView, { tool: "memory.create" | "task.update" | "goal.create" | "goal.update" }>; onUpdate: (action: ActionView) => void }) {
   const isProject = action.tool !== "task.create";
   const isEdit = action.tool === "project.update";
   const [title, setTitle] = useState(action.tool === "task.create" ? action.input.title : action.input.name);

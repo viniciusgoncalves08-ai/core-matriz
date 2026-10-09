@@ -1,0 +1,75 @@
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { db } from "@/lib/db";
+import { proposeGoal, proposeGoalEdit, decideAction, listActions, ActionConflictError, ActionNotFoundError } from "./action-service";
+describe.skipIf(process.env.ACTION_DB_TESTS !== "true")("goal actions with isolated Postgres", () => {
+ let userId:string, other:string, conversationId:string, projectId:string, goalId:string;
+ beforeAll(async()=>{
+  const url=new URL(process.env.DATABASE_URL!);
+  if(!["localhost","127.0.0.1"].includes(url.hostname)||url.pathname!=="/core_matriz")throw new Error("Only isolated CI database allowed");
+  userId=(await db.user.create({data:{email:`goal-action-${crypto.randomUUID()}@example.invalid`}})).id;
+  other=(await db.user.create({data:{email:`goal-other-${crypto.randomUUID()}@example.invalid`}})).id;
+  conversationId=(await db.conversation.create({data:{userId}})).id;
+  projectId=(await db.project.create({data:{userId,name:"Estudos"}})).id;
+  await db.project.create({data:{userId:other,name:"Privado"}});
+ });
+ afterAll(async()=>{for(const id of [userId,other])if(id)await db.user.delete({where:{id}});await db.$disconnect();});
+ const input={title:"Terminar curso",description:"Todas as aulas",category:"Pessoal",status:"active" as const,progress:10,dueAt:"2026-12-20"};
+ const params=()=>({userId,conversationId,message:"Crie o objetivo Terminar curso"});
+ it("proposes without writing, then creates exactly once with consent and provenance",async()=>{
+  const proposal=await proposeGoal({...params(),input,projectName:"Estudos"});
+  expect(await db.goal.count({where:{userId}})).toBe(0);
+  const action=(await listActions(userId,conversationId)).find(a=>a.id===proposal.message.id)!;
+  expect(action.tool).toBe("goal.create");
+  await expect(decideAction(other,action.id,{decision:"confirm",input:{...input,projectId}})).rejects.toBeInstanceOf(ActionNotFoundError);
+  const results=await Promise.all([decideAction(userId,action.id,{decision:"confirm",input:{...input,projectId}}),decideAction(userId,action.id,{decision:"confirm",input:{...input,projectId}})]);
+  if(results[0].tool!=="goal.create"||results[1].tool!=="goal.create")throw new Error("Wrong tool");
+  expect(results[0].goalId).toBe(results[1].goalId);goalId=results[0].goalId!;
+  expect(await db.goal.count({where:{userId}})).toBe(1);
+  expect(await db.goal.findUnique({where:{id:goalId}})).toMatchObject({projectId,progress:10,description:"Todas as aulas"});
+  expect(await db.auditLog.count({where:{userId,action:"GOAL_CREATED",permission:"CONFIRM"}})).toBe(1);
+ });
+ it("preserves unmentioned fields, normalizes completion and rejects stale edits",async()=>{
+  const p=await proposeGoalEdit({...params(),query:input.title,changes:{progress:40}});
+  const a=(await listActions(userId,conversationId)).find(a=>a.id===p.message.id)!;
+  expect(a.input).toMatchObject({...input,progress:40,projectId});
+  await decideAction(userId,a.id,{decision:"confirm",input:a.input});
+  const old=await proposeGoalEdit({...params(),query:input.title,changes:{status:"paused"}});
+  await db.goal.update({where:{id:goalId},data:{description:"Alteração externa",updatedAt:new Date(Date.now()+1000)}});
+  const stale=(await listActions(userId,conversationId)).find(a=>a.id===old.message.id)!;
+  await expect(decideAction(userId,stale.id,{decision:"confirm",input:stale.input})).rejects.toBeInstanceOf(ActionConflictError);
+  const complete=await proposeGoalEdit({...params(),query:input.title,changes:{status:"completed"}});
+  const final=(await listActions(userId,conversationId)).find(a=>a.id===complete.message.id)!;
+  expect(final.input).toMatchObject({progress:100,status:"completed",description:"Alteração externa",projectId});
+  await decideAction(userId,final.id,{decision:"confirm",input:final.input});
+  expect(await db.goal.findUnique({where:{id:goalId}})).toMatchObject({progress:100,status:"completed"});
+  await expect(proposeGoalEdit({...params(),query:input.title,changes:{progress:40}})).rejects.toThrow("retomar");
+ });
+ it("rejects foreign and ambiguous selections and rechecks project at confirmation",async()=>{
+  await expect(proposeGoal({...params(),input,projectName:"Privado"})).rejects.toThrow("Não encontrei");
+  await expect(proposeGoalEdit({...params(),userId:other,query:input.title,changes:{progress:5}})).rejects.toThrow("Não encontrei");
+  const p=await proposeGoal({...params(),input,projectName:"Estudos"});
+  const a=(await listActions(userId,conversationId)).find(a=>a.id===p.message.id)!;
+  const foreign=(await db.project.findFirstOrThrow({where:{userId:other}})).id;
+  await expect(decideAction(userId,a.id,{decision:"confirm",input:{...input,projectId:foreign}})).rejects.toBeInstanceOf(ActionConflictError);
+  await db.project.delete({where:{id:projectId}});
+  await expect(decideAction(userId,a.id,{decision:"confirm",input:a.input})).rejects.toBeInstanceOf(ActionConflictError);
+  expect((await decideAction(userId,a.id,{decision:"cancel"})).status).toBe("cancelled");
+  expect((await decideAction(userId,a.id,{decision:"confirm",input:{...input,projectId:null}})).status).toBe("cancelled");
+  await db.goal.create({data:{userId,title:input.title}});
+  await expect(proposeGoalEdit({...params(),query:input.title,changes:{progress:50}})).rejects.toThrow("títulos iguais");
+ });
+ it("expires without executing and allows explicit unlinking",async()=>{
+  const project=await db.project.create({data:{userId,name:"Outro"}});
+  await db.goal.create({data:{userId,title:"Único",projectId:project.id}});
+  const p=await proposeGoalEdit({...params(),query:"Único",changes:{},projectName:null});
+  const a=(await listActions(userId,conversationId)).find(a=>a.id===p.message.id)!;
+  expect(a.input).toMatchObject({projectId:null});
+  await decideAction(userId,a.id,{decision:"confirm",input:a.input});
+  expect(await db.goal.findFirst({where:{userId,title:"Único"}})).toMatchObject({projectId:null});
+  const expired=await proposeGoal({...params(),input:{title:"Expirado"}});
+  const e=(await listActions(userId,conversationId)).find(a=>a.id===expired.message.id)!;
+  await db.message.update({where:{id:e.id},data:{metadata:{action:{...e,expiresAt:"2000-01-01T00:00:00.000Z"}}}});
+  expect((await decideAction(userId,e.id,{decision:"confirm",input:e.input})).status).toBe("expired");
+  expect(await db.goal.count({where:{userId,title:"Expirado"}})).toBe(0);
+ });
+});

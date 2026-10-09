@@ -35,12 +35,28 @@ export const memoryActionRecord = taskActionRecord.omit({ tool: true, input: tru
   sourceMessageId: z.string().min(1).max(100).optional(),
   tool: z.literal("memory.create"), input: memoryActionInput, memoryId: z.string().optional(),
 });
-export const actionRecord = z.discriminatedUnion("tool", [taskActionRecord, taskUpdateRecord, projectActionRecord, projectUpdateRecord, memoryActionRecord]);
+export const goalActionInput = z.object({
+  title: z.string().trim().min(2).max(200),
+  description: z.string().trim().max(5000).default(""),
+  category: z.string().trim().max(80).default(""),
+  status: z.enum(["active", "paused", "completed", "cancelled"]).default("active"),
+  progress: z.number().int().min(0).max(100).default(0),
+  dueAt: z.string().date().nullable().default(null),
+  projectId: z.string().min(1).max(100).nullable().default(null),
+}).strict();
+export const goalActionRecord = taskActionRecord.omit({ tool: true, input: true, taskId: true }).extend({
+  tool: z.literal("goal.create"), input: goalActionInput, goalId: z.string().optional(),
+  projectName: z.string().optional(),
+});
+export const goalUpdateRecord = goalActionRecord.extend({
+  tool: z.literal("goal.update"), goalId: z.string().min(1), expectedUpdatedAt: z.string().datetime(),
+});
+export const actionRecord = z.discriminatedUnion("tool", [taskActionRecord, taskUpdateRecord, projectActionRecord, projectUpdateRecord, memoryActionRecord, goalActionRecord, goalUpdateRecord]);
 export type TaskAction = z.infer<typeof taskActionRecord>;
 export type ConfirmedAction = z.infer<typeof actionRecord>;
 export type ActionView = ConfirmedAction & { id: string };
 export const actionDecision = z.discriminatedUnion("decision", [
-  z.object({ decision: z.literal("confirm"), input: z.union([taskUpdateInput, taskActionInput, projectActionInput, projectUpdateInput, memoryActionInput]) }).strict(),
+  z.object({ decision: z.literal("confirm"), input: z.union([taskUpdateInput, taskActionInput, projectActionInput, projectUpdateInput, memoryActionInput, goalActionInput]) }).strict(),
   z.object({ decision: z.literal("cancel") }).strict(),
 ]);
 
