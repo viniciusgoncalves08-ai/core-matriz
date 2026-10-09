@@ -343,3 +343,9 @@ Além dos comandos explícitos, envie “Preciso ligar para o fornecedor amanhã
 ### Alertas internos
 
 A Home e a área Alertas mostram tarefas e objetivos atrasados. Marque os avisos como lidos para persistir a leitura na conta. Concluir ou reagendar os itens muda a próxima consulta. Atualize pelo botão ou reabra a área. Este recurso não envia push/e-mail nem roda com o app fechado. A migration `202610090001_deadline_alert_reads` é aplicada no deploy de produção.
+
+### Busca global
+
+A área `/busca` consulta tarefas, projetos, objetivos, memórias e conversas da conta autenticada. O endpoint `GET /api/search?q=texto&kind=all` aceita de 2 a 120 caracteres e as categorias `all`, `tasks`, `projects`, `goals`, `memories` e `conversations`. As consultas são textuais, sem diferenciar maiúsculas de minúsculas, e não usam IA. Retorna até 10 registros recentes por categoria, com aviso quando existem mais; refine o texto ou a categoria para reduzir os resultados.
+
+Memórias precisam estar ativas e dentro da validade. Conteúdo, resumo e origem são pesquisados. Conversas pesquisam títulos e mensagens de usuário/assistente; o histórico original pode conter informações de memórias que foram bloqueadas posteriormente. Projetos, memórias e conversas abrem diretamente; tarefas e objetivos abrem suas listas. A resposta não é armazenada em cache. Testes de integração verificam os cinco módulos, isolamento entre contas e exclusão de memórias bloqueadas, excluídas, substituídas, vencidas e futuras. Não há migração nesta entrega.
