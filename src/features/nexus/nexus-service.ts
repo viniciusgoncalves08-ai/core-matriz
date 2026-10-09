@@ -1,3 +1,4 @@
+import { isMemoryReferenceRequest, usableMemoryReference } from "@/features/memory/memory-reference";
 import { getMemorySettings } from "@/features/settings/memory-settings-service";
 import { extractAutomaticPreference, saveAutomaticPreference } from "@/features/memory/automatic-preference";
 import { isMemorySnapshot } from "@/features/memory/memory-snapshot";
@@ -7,7 +8,7 @@ import { parseTaskQuery, respondWithTaskQuery } from "@/features/tasks/task-quer
 import { isDailyBriefRequest, respondWithDailyBrief } from "@/features/home/daily-brief";
 import { RECALL_POLICY } from "@/features/context/conversation-recall";
 import { parseTaskEditCommand, parseMemoryCommand, parseTaskCommand, parseProjectCommand, parseProjectEditCommand } from "@/features/actions/action-schema";
-import { proposeTaskEdit, proposeMemory, proposeTask, proposeProject, proposeProjectEdit } from "@/features/actions/action-service";
+import { ProjectSelectionError, proposeTaskEdit, proposeMemory, proposeTask, proposeProject, proposeProjectEdit } from "@/features/actions/action-service";
 import { limitHistory } from "@/features/context/history-budget";
 import { AIError } from "@/ai/ai-error";
 import { getModelTarget } from "@/ai/model-target";
@@ -60,6 +61,20 @@ export async function respondAsNexus(params: {
   if (isDailyBriefRequest(params.message)) {
     if (params.signal?.aborted) throw new AIError("AI_CANCELLED");
     return respondWithDailyBrief({ ...params, agentId: agent?.id });
+  }
+
+  if (isMemoryReferenceRequest(params.message)) {
+    if (params.signal?.aborted) throw new AIError("AI_CANCELLED");
+    const previous = await db.message.findMany({
+      where: { conversationId: params.conversationId, role: "user", conversation: { userId: params.userId } },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1,
+      select: { id: true, content: true },
+    });
+    const source = previous[0];
+    if (!source || !usableMemoryReference(source.content) || parseMemoryCommand(source.content) || parseTaskCommand(source.content) || parseProjectCommand(source.content) || parseTaskEditCommand(source.content) || parseProjectEditCommand(source.content) || isMemoryProfileRequest(source.content) || parseTaskQuery(source.content) || isDailyBriefRequest(source.content)) {
+      throw new ProjectSelectionError('Não encontrei uma informação clara na sua última mensagem para guardar. Envie "lembre que ..." com o conteúdo desejado.');
+    }
+    return proposeMemory({ ...params, content: source.content, sourceMessageId: source.id, agentId: agent?.id, agentName: agent?.name });
   }
 
   const memoryContent = parseMemoryCommand(params.message);

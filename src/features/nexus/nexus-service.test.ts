@@ -3,7 +3,7 @@ const mocks = vi.hoisted(() => ({ autoSave: vi.fn(), memoryQuery: vi.fn(), propo
 vi.mock("@/lib/db", () => ({ db: { $transaction: async (action: (tx: unknown) => unknown) => action({ message: { create: mocks.createMessage }, conversation: { update: vi.fn() }, auditLog: { create: vi.fn() } }), agent: { findFirst: mocks.findAgent }, conversation: { findFirst: mocks.findConversation, update: vi.fn() }, message: { findMany: mocks.history, create: mocks.createMessage }, auditLog: { create: vi.fn() } } }));
 vi.mock("@/features/context/context-engine", () => ({ buildContext: vi.fn().mockResolvedValue({}), serializeContext: () => "" }));
 vi.mock("@/ai/model-router", () => ({ modelRouter: { generate: mocks.generate, stream: mocks.stream } }));
-vi.mock("@/features/actions/action-service", () => ({ proposeTaskEdit: mocks.proposeTaskEdit, proposeMemory: mocks.proposeMemory, proposeProjectEdit: mocks.proposeProjectEdit, proposeProject: mocks.proposeProject, proposeTask: mocks.proposeTask }));
+vi.mock("@/features/actions/action-service", () => ({ ProjectSelectionError: class extends Error {}, proposeTaskEdit: mocks.proposeTaskEdit, proposeMemory: mocks.proposeMemory, proposeProjectEdit: mocks.proposeProjectEdit, proposeProject: mocks.proposeProject, proposeTask: mocks.proposeTask }));
 vi.mock("@/features/memory/memory-query", () => ({ respondWithMemoryQuery: mocks.memoryQuery }));
 vi.mock("@/features/memory/automatic-preference", async importOriginal => ({ ...await importOriginal<typeof import("@/features/memory/automatic-preference")>(), saveAutomaticPreference: mocks.autoSave }));
 vi.mock("@/features/settings/memory-settings-service", () => ({ getMemorySettings: vi.fn().mockResolvedValue({autoMemory:false}) }));
@@ -176,4 +176,17 @@ it("uses account default, respects explicit pause, and fails closed on settings 
  mocks.autoSave.mockClear();await respondAsNexus({userId:"u",conversationId:"c",message:"Prefiro respostas objetivas",autoMemory:false});expect(mocks.autoSave).not.toHaveBeenCalled();
  vi.mocked(getMemorySettings).mockRejectedValueOnce(new Error("unavailable"));await respondAsNexus({userId:"u",conversationId:"c",message:"Prefiro respostas objetivas"});expect(mocks.autoSave).not.toHaveBeenCalled();
  vi.mocked(getMemorySettings).mockResolvedValue({autoMemory:false});
+});
+
+it("proposes the previous user message for a memory reference without a model call", async () => {
+ vi.clearAllMocks(); mocks.findConversation.mockResolvedValue({id:"c"}); mocks.findAgent.mockResolvedValue(null);
+ mocks.history.mockResolvedValue([{id:"source",content:"Meu objetivo é terminar o curso"}]); mocks.proposeMemory.mockResolvedValue({message:{id:"proposal"}});
+ await respondAsNexus({userId:"u",conversationId:"c",message:"guarde isso na memória"});
+ expect(mocks.proposeMemory).toHaveBeenCalledWith(expect.objectContaining({content:"Meu objetivo é terminar o curso",sourceMessageId:"source"}));
+ expect(mocks.history).toHaveBeenCalledWith(expect.objectContaining({where:{conversationId:"c",role:"user",conversation:{userId:"u"}},take:1}));
+ expect(mocks.generate).not.toHaveBeenCalled();
+});
+it.each([{rows:[]},{rows:[{id:"s",content:"Guarde isso na memória"}]},{rows:[{id:"s",content:"Qual meu objetivo?"}]}])("asks for explicit content when reference is missing or ambiguous",async ({rows})=>{
+ vi.clearAllMocks();mocks.findConversation.mockResolvedValue({id:"c"});mocks.findAgent.mockResolvedValue(null);mocks.history.mockResolvedValue(rows);
+ await expect(respondAsNexus({userId:"u",conversationId:"c",message:"guarde isso"})).rejects.toThrow("lembre que");expect(mocks.proposeMemory).not.toHaveBeenCalled();expect(mocks.generate).not.toHaveBeenCalled();
 });
