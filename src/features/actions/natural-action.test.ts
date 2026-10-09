@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
-const m = vi.hoisted(() => ({ generate: vi.fn(), task: vi.fn(), project: vi.fn(), taskEdit: vi.fn(), projectEdit: vi.fn(), goal: vi.fn(), goalEdit: vi.fn() }));
+const m = vi.hoisted(() => ({ generate: vi.fn(), task: vi.fn(), project: vi.fn(), taskEdit: vi.fn(), projectEdit: vi.fn(), goal: vi.fn(), goalEdit: vi.fn(), reminder: vi.fn(), reminderEdit: vi.fn() }));
 vi.mock("@/ai/model-router", () => ({ modelRouter: { generate: m.generate } }));
-vi.mock("./action-service", () => ({ ProjectSelectionError: class extends Error {}, proposeTask: m.task, proposeProject: m.project, proposeTaskEdit: m.taskEdit, proposeProjectEdit: m.projectEdit, proposeGoal: m.goal, proposeGoalEdit: m.goalEdit }));
+vi.mock("./action-service", () => ({ ProjectSelectionError: class extends Error {}, proposeTask: m.task, proposeProject: m.project, proposeTaskEdit: m.taskEdit, proposeProjectEdit: m.projectEdit, proposeGoal: m.goal, proposeGoalEdit: m.goalEdit, proposeReminder: m.reminder, proposeReminderEdit: m.reminderEdit }));
 import { isNaturalActionRequest, parseNaturalAction, proposeNaturalAction } from "./natural-action";
 const params = { userId: "owner", conversationId: "conversation", message: "Preciso ligar amanhã" };
 beforeEach(() => vi.clearAllMocks());
@@ -60,3 +60,21 @@ it.each([
  {tool:"goal.update",query:"Curso",input:{userId:"foreign"}},
  {tool:"goal.update",query:"Curso",input:{dueAt:"2026-02-30"}},
 ])("rejects unsafe goal plan %#", plan=>expect(()=>parseNaturalAction(JSON.stringify(plan))).toThrow());
+
+it.each(["Me lembre amanhã às 9h de ligar", "Lembre-me sexta às 14h de estudar", "Cancele o lembrete Ligar"])("routes reminder requests: %s", text => expect(isNaturalActionRequest(text)).toBe(true));
+it("plans reminders with explicit date and time and no permission to execute", async () => {
+ m.generate.mockResolvedValue({text:JSON.stringify({tool:"reminder.create",input:{title:"Ligar",date:"2030-10-10",time:"09:00"}})});
+ await proposeNaturalAction(params);
+ expect(m.reminder).toHaveBeenCalledWith(expect.objectContaining({userId:"owner",input:{title:"Ligar",date:"2030-10-10",time:"09:00"}}));
+});
+it("forwards only requested reminder update fields", async () => {
+ m.generate.mockResolvedValue({text:JSON.stringify({tool:"reminder.update",query:"Ligar",input:{status:"cancelled"}})});
+ await proposeNaturalAction(params);
+ expect(m.reminderEdit).toHaveBeenCalledWith(expect.objectContaining({query:"Ligar",changes:{status:"cancelled"}}));
+});
+it.each([
+ {tool:"reminder.create",input:{title:"Ligar",date:"2030-10-10"}},
+ {tool:"reminder.create",input:{title:"Ligar",date:"2030-10-10",time:"09:00",channel:"push"}},
+ {tool:"reminder.update",query:"Ligar",input:{}},
+ {tool:"reminder.update",query:"Ligar",input:{userId:"foreign"}},
+])("rejects unsafe reminder plans %#", plan=>expect(()=>parseNaturalAction(JSON.stringify(plan))).toThrow());

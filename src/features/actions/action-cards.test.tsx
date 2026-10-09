@@ -39,3 +39,11 @@ it("shows goal review fields and the resolved project before confirmation",()=>{
  const saved=renderToStaticMarkup(<ActionCard action={{...action,status:"succeeded",goalId:"saved"}} onUpdate={()=>{}} />);
  expect(saved).toContain('/objetivos');expect(saved).toContain('/projetos/project');expect(saved).not.toContain("Confirmar e criar objetivo");
 });
+
+it("shows date, time, timezone and review on a reminder proposal",()=>{
+ const action:ActionView={id:"r",version:1,tool:"reminder.create",permission:"CONFIRM",status:"pending",expiresAt:"2030-10-10T00:00:00.000Z",input:{title:"Ligar",date:"2030-10-10",time:"09:00"}};
+ const html=renderToStaticMarkup(<ActionCard action={action} onUpdate={()=>{}} />);
+ expect(html).toContain("Confirmar e criar lembrete");expect(html).toContain("Brasília");expect(html).toContain('type="time"');
+ const saved=renderToStaticMarkup(<ActionCard action={{...action,status:"succeeded",reminderId:"saved"}} onUpdate={()=>{}} />);
+ expect(saved).toContain("/alertas#lembretes");expect(saved).not.toContain("Confirmar e criar lembrete");
+});

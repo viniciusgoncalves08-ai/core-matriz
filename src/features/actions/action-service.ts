@@ -1,3 +1,5 @@
+import { reminderInput, reminderUpdateInput, reminderInstant, reminderLocalTime, requireFutureReminder, ReminderTimeError } from "@/features/reminders/reminder-schema";
+import { createReminder, updateReminder } from "@/features/reminders/reminder-service";
 import type { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -69,13 +71,30 @@ export async function proposeGoalEdit(params: ProposalParams & { query: string; 
   if (input.status === "completed") input.progress = 100;
   return proposeAction(params, { version: 1, tool: "goal.update", permission: "CONFIRM", status: "pending", expiresAt: expiry(), goalId: goal.id, expectedUpdatedAt: goal.updatedAt.toISOString(), input, ...(project ? { projectName: project.name } : {}) });
 }
+export async function proposeReminder(params: ProposalParams & { input: z.input<typeof reminderInput> }) {
+  const input = reminderInput.parse(params.input);
+  try { requireFutureReminder(reminderInstant(input.date, input.time)); }
+  catch (error) { if (error instanceof ReminderTimeError) throw new ProjectSelectionError(error.message); throw error; }
+  return proposeAction(params, { version: 1, tool: "reminder.create", permission: "CONFIRM", status: "pending", expiresAt: expiry(), input });
+}
+export async function proposeReminderEdit(params: ProposalParams & { query: string; changes: Partial<z.input<typeof reminderUpdateInput>> }) {
+  const matches = await db.reminder.findMany({ where: { userId: params.userId, title: { equals: params.query, mode: "insensitive" } }, take: 2 });
+  if (matches.length !== 1) throw new ProjectSelectionError(matches.length ? "Há lembretes com títulos iguais. Edite o desejado em Alertas → Lembretes." : "Não encontrei esse lembrete. Confira o título completo em Alertas → Lembretes.");
+  const reminder = matches[0];
+  const input = reminderUpdateInput.parse({ title: reminder.title, ...reminderLocalTime(reminder.dueAt), status: reminder.status, ...params.changes });
+  const dueAt = reminderInstant(input.date, input.time);
+  if (input.status === "scheduled" && (dueAt.getTime() !== reminder.dueAt.getTime() || reminder.status !== "scheduled")) {
+    try { requireFutureReminder(dueAt); } catch (error) { if (error instanceof ReminderTimeError) throw new ProjectSelectionError(error.message); throw error; }
+  }
+  return proposeAction(params, { version: 1, tool: "reminder.update", permission: "CONFIRM", status: "pending", expiresAt: expiry(), reminderId: reminder.id, expectedVersion: reminder.version, input });
+}
 async function proposeAction(params: ProposalParams, action: ConfirmedAction) {
   return db.$transaction(async tx => {
     if (!await tx.conversation.findFirst({ where: { id: params.conversationId, userId: params.userId }, select: { id: true } })) throw new ActionNotFoundError();
     await tx.message.create({ data: { conversationId: params.conversationId, role: "user", content: params.message } });
     const message = await tx.message.create({ data: {
       conversationId: params.conversationId, role: "assistant",
-      content: (action.tool === "goal.create" || action.tool === "goal.update") ? "Preparei uma proposta de objetivo. Revise título, prazo, progresso e projeto no cartão e confirme para salvar. Nada foi alterado ainda." : action.tool === "task.update" ? "Localizei a tarefa. Revise prazo, prioridade e situação no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "memory.create" ? (action.sourceMessageId ? "Selecionei a sua mensagem anterior, não a resposta da IA. Revise o conteúdo e a classificação no cartão e confirme. Nada foi salvo ainda." : "Preparei uma memória para revisão. Confira o conteúdo e a classificação no cartão e confirme para salvar. A memória ainda não foi gravada.") : action.tool === "project.update" ? "Localizei o projeto. Revise as alterações no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "project.create" ? "Preparei uma proposta de projeto. Revise nome, descrição e situação no cartão e confirme para salvar. Nenhum projeto foi criado ainda." : "Preparei uma proposta de tarefa. Revise o cartão de ação e confirme para criá-la. Nenhuma tarefa foi criada ainda. Confira especialmente o prazo e a prioridade antes de confirmar. Isto não agenda notificações.",
+      content: (action.tool === "reminder.create" || action.tool === "reminder.update") ? "Revise o lembrete e a data e hora de Brasília no cartão. Confirme para salvar. O aviso fica dentro do app, sem push ou e-mail." : (action.tool === "goal.create" || action.tool === "goal.update") ? "Preparei uma proposta de objetivo. Revise título, prazo, progresso e projeto no cartão e confirme para salvar. Nada foi alterado ainda." : action.tool === "task.update" ? "Localizei a tarefa. Revise prazo, prioridade e situação no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "memory.create" ? (action.sourceMessageId ? "Selecionei a sua mensagem anterior, não a resposta da IA. Revise o conteúdo e a classificação no cartão e confirme. Nada foi salvo ainda." : "Preparei uma memória para revisão. Confira o conteúdo e a classificação no cartão e confirme para salvar. A memória ainda não foi gravada.") : action.tool === "project.update" ? "Localizei o projeto. Revise as alterações no cartão e confirme para salvar. Nenhuma alteração foi feita ainda." : action.tool === "project.create" ? "Preparei uma proposta de projeto. Revise nome, descrição e situação no cartão e confirme para salvar. Nenhum projeto foi criado ainda." : "Preparei uma proposta de tarefa. Revise o cartão de ação e confirme para criá-la. Nenhuma tarefa foi criada ainda. Confira especialmente o prazo e a prioridade antes de confirmar. Isto não agenda notificações.",
       metadata: { action, ...(params.agentId ? { agentId: params.agentId, agentName: params.agentName ?? "Nexus" } : {}) },
     } });
     await tx.conversation.update({ where: { id: params.conversationId }, data: { updatedAt: new Date() } });
@@ -86,7 +105,7 @@ async function proposeAction(params: ProposalParams, action: ConfirmedAction) {
 
 export async function listActions(userId: string, conversationId: string) {
   if (!await db.conversation.findFirst({ where: { id: conversationId, userId }, select: { id: true } })) throw new ActionNotFoundError();
-  const rows = await db.message.findMany({ where: { conversationId, role: "assistant", OR: ["task.create", "task.update", "project.create", "project.update", "memory.create", "goal.create", "goal.update"].map(tool => ({ metadata: { path: ["action", "tool"], equals: tool } })) }, orderBy: { createdAt: "desc" }, take: 30, select: { id: true, metadata: true } });
+  const rows = await db.message.findMany({ where: { conversationId, role: "assistant", OR: ["task.create", "task.update", "project.create", "project.update", "memory.create", "goal.create", "goal.update", "reminder.create", "reminder.update"].map(tool => ({ metadata: { path: ["action", "tool"], equals: tool } })) }, orderBy: { createdAt: "desc" }, take: 30, select: { id: true, metadata: true } });
   return rows.flatMap(row => { const action = decode(row.metadata); return action ? [view(row.id, action)] : []; });
 }
 
@@ -104,6 +123,8 @@ export async function decideAction(userId: string, id: string, raw: unknown) {
       else if (action.tool === "task.create") taskActionInput.parse(decision.input);
       else if (action.tool === "project.update") projectUpdateInput.parse(decision.input);
       else if (action.tool === "goal.create" || action.tool === "goal.update") goalActionInput.parse(decision.input);
+      else if (action.tool === "reminder.create") reminderInput.parse(decision.input);
+      else if (action.tool === "reminder.update") reminderUpdateInput.parse(decision.input);
       else projectActionInput.parse(decision.input);
     }
     const expired = Date.parse(action.expiresAt) <= Date.now();
@@ -182,9 +203,19 @@ export async function decideAction(userId: string, id: string, raw: unknown) {
       final = { ...action, input, status: "succeeded", goalId };
       await tx.auditLog.create({ data: { userId, action: action.tool === "goal.update" ? "GOAL_UPDATED" : "GOAL_CREATED", entityType: "goal", entityId: goalId, tool: action.tool, permission: "CONFIRM", metadata: { requestId: id, authorizedBy: userId, conversationId: current.conversationId, after: input } } });
     }
+    if (status === "executing" && decision.decision === "confirm" && action.tool === "reminder.create") {
+      const input = reminderInput.parse(decision.input);
+      const reminder = await createReminder(tx, userId, input, new Date(), id);
+      final = { ...action, input, status: "succeeded", reminderId: reminder.id };
+    }
+    if (status === "executing" && decision.decision === "confirm" && action.tool === "reminder.update") {
+      const input = reminderUpdateInput.parse(decision.input);
+      await updateReminder(tx, userId, action.reminderId, action.expectedVersion, input, new Date(), id);
+      final = { ...action, input, status: "succeeded" };
+    }
     await tx.message.update({ where: { id }, data: {
       metadata: { ...metadata, action: final },
-      content: final.status === "succeeded" ? (final.tool === "goal.create" || final.tool === "goal.update") ? `Objetivo ${final.tool === "goal.update" ? "atualizado" : "criado"} após sua confirmação: ${final.input.title}. Consulte-o em Objetivos.` : final.tool === "memory.create" ? "Memória salva após sua confirmação. Você pode revisá-la, corrigi-la ou bloqueá-la em Memória." : (final.tool === "task.create" || final.tool === "task.update") ? `Tarefa ${final.tool === "task.update" ? "atualizada" : "criada"} após sua confirmação: ${final.input.title}. Consulte-a em Tarefas.` : `Projeto ${final.tool === "project.update" ? "atualizado" : "criado"} após sua confirmação: ${final.input.name}. Consulte-o em Projetos.` : final.status === "cancelled" ? "Proposta cancelada. Nenhuma ação foi executada." : "A proposta expirou. Envie um novo pedido.",
+      content: final.status === "succeeded" ? (final.tool === "reminder.create" || final.tool === "reminder.update") ? `Lembrete salvo após sua confirmação: ${final.input.title}. Confira em Alertas → Lembretes. Aviso interno, sem envio fora do app.` : (final.tool === "goal.create" || final.tool === "goal.update") ? `Objetivo ${final.tool === "goal.update" ? "atualizado" : "criado"} após sua confirmação: ${final.input.title}. Consulte-o em Objetivos.` : final.tool === "memory.create" ? "Memória salva após sua confirmação. Você pode revisá-la, corrigi-la ou bloqueá-la em Memória." : (final.tool === "task.create" || final.tool === "task.update") ? `Tarefa ${final.tool === "task.update" ? "atualizada" : "criada"} após sua confirmação: ${final.input.title}. Consulte-a em Tarefas.` : `Projeto ${final.tool === "project.update" ? "atualizado" : "criado"} após sua confirmação: ${final.input.name}. Consulte-o em Projetos.` : final.status === "cancelled" ? "Proposta cancelada. Nenhuma ação foi executada." : "A proposta expirou. Envie um novo pedido.",
     } });
     await tx.conversation.update({ where: { id: current.conversationId }, data: { updatedAt: new Date() } });
     await tx.auditLog.create({ data: { userId, action: final.status === "succeeded" ? "ACTION_CONFIRMED" : final.status === "cancelled" ? "ACTION_CANCELLED" : "ACTION_EXPIRED", entityType: "conversation", entityId: current.conversationId, tool: action.tool, permission: "CONFIRM", metadata: { requestId: id } } });

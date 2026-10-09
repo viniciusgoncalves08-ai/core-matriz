@@ -1,3 +1,4 @@
+import { reminderInput, reminderUpdateInput } from "@/features/reminders/reminder-schema";
 import { z } from "zod";
 export const taskActionInput = z.object({ title: z.string().trim().min(2).max(200), dueAt: z.string().date().nullable().default(null), priority: z.number().int().min(0).max(3).default(0) }).strict();
 export const taskActionRecord = z.object({
@@ -51,12 +52,18 @@ export const goalActionRecord = taskActionRecord.omit({ tool: true, input: true,
 export const goalUpdateRecord = goalActionRecord.extend({
   tool: z.literal("goal.update"), goalId: z.string().min(1), expectedUpdatedAt: z.string().datetime(),
 });
-export const actionRecord = z.discriminatedUnion("tool", [taskActionRecord, taskUpdateRecord, projectActionRecord, projectUpdateRecord, memoryActionRecord, goalActionRecord, goalUpdateRecord]);
+export const reminderActionRecord = taskActionRecord.omit({ tool: true, input: true, taskId: true }).extend({
+  tool: z.literal("reminder.create"), input: reminderInput, reminderId: z.string().optional(),
+});
+export const reminderUpdateRecord = reminderActionRecord.extend({
+  tool: z.literal("reminder.update"), input: reminderUpdateInput, reminderId: z.string().min(1), expectedVersion: z.number().int().min(0),
+});
+export const actionRecord = z.discriminatedUnion("tool", [taskActionRecord, taskUpdateRecord, projectActionRecord, projectUpdateRecord, memoryActionRecord, goalActionRecord, goalUpdateRecord, reminderActionRecord, reminderUpdateRecord]);
 export type TaskAction = z.infer<typeof taskActionRecord>;
 export type ConfirmedAction = z.infer<typeof actionRecord>;
 export type ActionView = ConfirmedAction & { id: string };
 export const actionDecision = z.discriminatedUnion("decision", [
-  z.object({ decision: z.literal("confirm"), input: z.union([taskUpdateInput, taskActionInput, projectActionInput, projectUpdateInput, memoryActionInput, goalActionInput]) }).strict(),
+  z.object({ decision: z.literal("confirm"), input: z.union([taskUpdateInput, taskActionInput, projectActionInput, projectUpdateInput, memoryActionInput, goalActionInput, reminderInput, reminderUpdateInput]) }).strict(),
   z.object({ decision: z.literal("cancel") }).strict(),
 ]);
 

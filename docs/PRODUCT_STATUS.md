@@ -43,7 +43,7 @@ Sem Lovable. Provedores de IA são integrações do produto, não desenvolvedore
 Priorizar entregas completas. Refinamentos isolados só entram quando necessários para o fluxo.
 
 1. **Ações por conversa:** tarefas, projetos e objetivos já possuem propostas por linguagem natural, revisão, confirmação e auditoria. Restam pedidos compostos, referências ambíguas e novas ferramentas.
-2. **Acompanhamento e lembretes:** central interna de atrasos com leitura persistente entregue; faltam lembretes agendados, preferências e notificações fora do app. Não confundir consulta de atrasos com execução programada.
+2. **Acompanhamento e lembretes:** central de atrasos e lembretes internos com data/hora, confirmação, reagendamento, cancelamento, conclusão e leitura persistente. A Home/central consulta vencimentos a cada minuto enquanto visível; ainda não há execução em background, recorrência, preferências de canais ou notificações fora do app.
 3. **Contexto conectado (entrega atual):** vínculos explícitos de conversas e memórias com projetos, hub do projeto e contexto por relações. Tarefas e objetivos já vinculados participam. Ainda não há relacionamento inferido automaticamente, grafo geral de entidades ou busca semântica.
 4. **Busca global:** entregue nos cinco módulos, textual e limitada a 10 resultados por categoria. Filtros avançados, paginação global e ranking semântico continuam pendentes.
 5. **Integrações:** arquivos e Google Calendar após a estabilização dos fluxos anteriores. Preparar e validar o fluxo completo antes de solicitar credenciais necessárias à ativação.
