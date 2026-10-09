@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 const navItems = [
   { href: "/", label: "Home" },
   { href: "/nexus", label: "Nexus" },
+  { href: "/alertas", label: "Alertas" },
   { href: "/projetos", label: "Projetos" },
   { href: "/tarefas", label: "Tarefas" },
   { href: "/objetivos", label: "Objetivos" },
@@ -17,6 +18,7 @@ const navItems = [
 const bottomNavItems = [
   { href: "/", label: "Home" },
   { href: "/nexus", label: "Nexus" },
+  { href: "/alertas", label: "Alertas" },
   { href: "/projetos", label: "Projetos" },
   { href: "/tarefas", label: "Tarefas" },
   { href: "/objetivos", label: "Objetivos" },
@@ -47,7 +49,7 @@ export function AppShell({ active, eyebrow = "CORE MATRIZ", title, description, 
           </div>
         </a>
         <nav>
-          {navItems.filter(item => ["Home", "Nexus", "Projetos", "Tarefas", "Objetivos", "Memória", "Agentes", "Histórico", "Configurações"].includes(item.label)).map((item) => (
+          {navItems.filter(item => ["Home", "Alertas", "Nexus", "Projetos", "Tarefas", "Objetivos", "Memória", "Agentes", "Histórico", "Configurações"].includes(item.label)).map((item) => (
             <a className={item.label === active ? "active" : ""} href={item.href} key={item.label}>
               {item.label}
             </a>

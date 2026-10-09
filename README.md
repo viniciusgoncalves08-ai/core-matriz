@@ -339,3 +339,7 @@ Memórias existentes podem ter conteúdo e classificação corrigidos na lista o
 ### Pedidos naturais no Nexus
 
 Além dos comandos explícitos, envie “Preciso ligar para o fornecedor amanhã”, “Crie um projeto chamado Loja” ou “Conclua a tarefa Ligar”. O modelo configurado prepara um cartão revisável; nada é executado antes de confirmar. Informe um pedido por mensagem e o nome completo para atualizar. Prazo não agenda notificação. Campos não mencionados na atualização são preservados.
+
+### Alertas internos
+
+A Home e a área Alertas mostram tarefas e objetivos atrasados. Marque os avisos como lidos para persistir a leitura na conta. Concluir ou reagendar os itens muda a próxima consulta. Atualize pelo botão ou reabra a área. Este recurso não envia push/e-mail nem roda com o app fechado. A migration `202610090001_deadline_alert_reads` é aplicada no deploy de produção.

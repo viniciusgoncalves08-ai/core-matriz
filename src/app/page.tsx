@@ -1,3 +1,4 @@
+import { AlertsPanel } from "@/features/alerts/alerts-panel";
 import { DailyBriefPanel } from "@/features/home/daily-brief-panel";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -18,7 +19,7 @@ export default async function HomePage() {
     <AppShell active="Home" title="Seu espaço, conectado." description="Acompanhe seus projetos, tarefas, memórias e agentes.">
       <div className="workspace-stack">
         <div className="actions"><Link className="button-link" href="/nexus">Abrir Nexus</Link><Link href="/historico">Histórico de conversas</Link></div>
-        {userId ? <Suspense fallback={<p className="panel muted" role="status">Carregando seu resumo…</p>}><DailyBriefPanel userId={userId} /><HomeOverview userId={userId} /></Suspense> : <section className="panel"><h2>Sua organização começa aqui</h2><p className="muted">Entre para ver suas tarefas, prazos e projetos em um só lugar.</p><p><Link className="button-link" href="/entrar">Entrar / criar conta</Link></p></section>}
+        {userId ? <Suspense fallback={<p className="panel muted" role="status">Carregando seu resumo…</p>}><AlertsPanel compact /><DailyBriefPanel userId={userId} /><HomeOverview userId={userId} /></Suspense> : <section className="panel"><h2>Sua organização começa aqui</h2><p className="muted">Entre para ver suas tarefas, prazos e projetos em um só lugar.</p><p><Link className="button-link" href="/entrar">Entrar / criar conta</Link></p></section>}
       </div>
       <h2 className="overview-shortcuts">Seus espaços</h2>
       <div className="grid">{modules.map(([title, description, href]) => <article key={title}><span className="line"/><h3>{title}</h3><p>{description}</p><a className="module-link" href={href}>Abrir {title.toLowerCase()} →</a></article>)}</div>
