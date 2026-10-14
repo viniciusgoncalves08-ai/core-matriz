@@ -2,7 +2,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { SearchResult } from "./search-service";
-const labels:Record<string,string>={all:"Tudo",tasks:"Tarefas",projects:"Projetos",goals:"Objetivos",memories:"Memórias",conversations:"Conversas"};
+const labels:Record<string,string>={all:"Tudo",tasks:"Tarefas",projects:"Projetos",goals:"Objetivos",memories:"Memórias",conversations:"Conversas",files:"Arquivos"};
 export function SearchPanel(){
  const [q,setQ]=useState("");const [kind,setKind]=useState("all");
  const [data,setData]=useState<{q:string;results:SearchResult[];limited:boolean}|null>(null);
@@ -22,6 +22,6 @@ export function SearchPanel(){
   <button disabled={busy} type="submit">{busy?"Pesquisando…":"Pesquisar"}</button></form>
   {error&&<p role="alert">{error}</p>}
   {data&&<div className="workspace-stack"><p role="status">{data.results.length} resultado(s) exibido(s) para “{data.q}”.</p>{data.results.length === 0 && <p>Nenhum resultado encontrado. Experimente outro trecho ou selecione Tudo.</p>}{data.results.map(r=><article className="panel" key={`${r.kind}:${r.id}`}><small>{labels[r.kind]}</small><h2><Link href={r.href}>{r.title}</Link></h2><p>{r.excerpt}</p>{["tasks","goals"].includes(r.kind)&&<small>Abre a lista de {labels[r.kind].toLowerCase()}.</small>}</article>)}{data.limited&&<p>Há mais resultados. Refine o texto; mostramos até 10 por categoria.</p>}</div>}
-  <p className="muted">Busca textual em títulos, descrições, memórias ativas e válidas e mensagens. Memórias bloqueadas ou excluídas não entram; o texto original pode continuar no histórico de conversas.</p>
+  <p className="muted">Busca textual em títulos, descrições, memórias ativas e válidas mensagens e texto extraído dos arquivos. Memórias bloqueadas ou excluídas não entram; o texto original pode continuar no histórico de conversas.</p>
  </section>;
 }

@@ -24,7 +24,7 @@ Sem Lovable. Provedores de IA são integrações do produto, não desenvolvedore
 | Eventos / automações / proatividade (32–34) | Sem implementação operacional | Eventos persistidos, processador, regras confirmadas, notificações, cooldown, relevância e histórico |
 | Auditoria (35) | Registros de Nexus, agentes, projetos, tarefas e memória; gravação transacional; tela `/atividade` com filtros e paginação | Permissões, consulta dos registros pelo Nexus e parâmetros/autorização estruturados; registros antigos de memória não foram reconstruídos |
 | Empresas / Vivessence / AutoShow (36–38) | Modelo Organization genérico | CRUD, relações de negócio e adaptadores reais; sem API de estoque/vendas conectada |
-| Calendar / arquivos / links (39–41) | Não implementados | OAuth, storage, validação de upload, processamento, links e permissões de execução |
+| Calendar / arquivos / links (39–41) | Anexos privados PDF/TXT/MD no Nexus; texto por página, projeto, busca, download e exclusão | Calendar/OAuth, arquivos grandes, OCR, links externos e armazenamento de objetos |
 | Veículos / finanças / smart home (42–44) | Não implementados | Domínios posteriores; sem alertas ou integração simulada |
 | Canais / voz (45–46, 59) | Web responsiva | Voz, Telegram, WhatsApp e e-mail dependem de integrações futuras |
 | Home (47–50) | Módulos, contagens reais, tarefas abertas/atrasadas projetos recentes e objetivos com progresso/prazo; navegação mobile | Notificações confirmadas e insights fundamentados. Contagem de atraso não é motor proativo |
@@ -140,3 +140,13 @@ Home e `/alertas` consultam tarefas abertas atrasadas e objetivos ativos abaixo 
 A leitura persiste em `DeadlineAlertRead`, com chave composta usuário + tipo/registro/data. A confirmação valida propriedade e prazo atual, é idempotente e gera uma auditoria apenas na primeira leitura. Datas diferentes geram novos avisos; voltar à mesma data preserva a leitura anterior. Há limite explícito de 100 tarefas e 100 objetivos mais antigos por consulta. Não há exclusão dos itens ao marcar como lido.
 
 Migration: `202610090001_deadline_alert_reads`. Executada pelo build de produção existente. Sem cron, e-mail, push, processo em segundo plano ou nova API paga. Consulta ao abrir e por botão Atualizar; não promete aviso com app fechado. Teste PostgreSQL no CI cobre concorrência, isolamento, reagendamento e conclusão.
+
+## Entrega — arquivos no Nexus (14/10/2026)
+
+Fluxo implementado: upload na conversa (inclusive antes da primeira mensagem), persistência privada, extração por página, recuperação de trechos no Nexus, referências navegáveis, visualização do texto e download do original, exclusão confirmada. Anexos acompanham o vínculo da conversa com o projeto e aparecem na área do projeto. A busca global inclui nomes e texto extraído, respeitando a conta autenticada.
+
+Limites: 1 MB/arquivo, 100 mil caracteres extraídos, 30 páginas/PDF, 5 arquivos/conversa, 20/conta. TXT/MD precisam de UTF-8; PDF precisa de texto e não pode exigir senha. Sem OCR, imagens, planilhas ou resumo integral garantido. Recuperação lexical de até 8 trechos, reduzida pelo orçamento de contexto; fontes disponíveis não significam que o modelo citou todas corretamente.
+
+Decisão desta versão: original e texto no PostgreSQL existente (máximo de 20 MB de originais por conta), sem novo serviço externo/credencial. Armazenamento de objetos privado será necessário antes de aumentar as cotas. Extração PDF usa pdf-parse no servidor; o conteúdo não executa ações. Upload e exclusão geram auditoria; o original e o texto são eliminados juntos. Respostas anteriores continuam no histórico, mas respostas marcadas como baseadas em arquivos não são reenviadas como contexto recente/recall.
+
+Validação: testes de extração com PDF real em memória, limites, UTF-8, API autenticada, download privado, referências e proteção contra contexto antigo; suíte PostgreSQL verifica persistência, bytes originais, duplicação concorrente, isolamento, vínculo/desvínculo de projeto, busca, exclusão e cotas concorrentes. Respostas de IA são controladas em testes, não uma validação da qualidade do modelo real. Migration 20261014120000_nexus_files aditiva; produção migra antes de servir a nova versão. Calendar é a próxima integração do roteiro.
