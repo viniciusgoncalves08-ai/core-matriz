@@ -51,7 +51,7 @@ export async function fileContext(userId: string, conversationId: string, terms:
   });
   return rows.flatMap(row => (row.pages as FilePage[]).filter(p => p.text.trim()).map(p => ({
     excerpt: { id: row.id, name: row.name, page: p.page, content: excerptAroundMatch(p.text, terms, 850), href: `/arquivos/${encodeURIComponent(row.id)}#pagina-${p.page}` },
-    score: terms.filter(t => p.text.toLocaleLowerCase("pt-BR").includes(t)).length,
+    score: terms.filter(t => row.name.toLocaleLowerCase("pt-BR").replace(/[^\p{L}\p{N}]/gu, "").includes(t)).length * 10 + terms.filter(t => p.text.toLocaleLowerCase("pt-BR").includes(t)).length,
     current: row.conversationId === conversationId,
   }))).sort((a, b) => b.score - a.score || Number(b.current) - Number(a.current) || a.excerpt.page - b.excerpt.page).slice(0, 8).map(row => row.excerpt);
 }

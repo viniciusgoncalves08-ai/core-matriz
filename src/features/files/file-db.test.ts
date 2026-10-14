@@ -38,6 +38,9 @@ describe.skipIf(process.env.ACTION_DB_TESTS !== "true")("private attachments in 
     expect(serializeContext(context)).toContain("Fornecedor prazo dezembro");
     expect((await globalSearch(owner, { q: "fornecedor", kind: "files" })).results[0].id).toBe(fileId);
     expect((await globalSearch(other, { q: "fornecedor", kind: "files" })).results).toEqual([]);
+    const named = await uploadFile(owner, linkedId, "contrato.pdf", pdfFixture("Termos comerciais sem palavra chave"));
+    expect((await fileContext(owner, linkedId, ["contratopdf"], projectId))[0].id).toBe(named.id);
+    await db.attachment.delete({ where: { id: named.id } });
     await db.conversation.update({ where: { id: conversationId }, data: { projectId: null } });
     expect(await fileContext(owner, linkedId, ["fornecedor"], projectId)).toEqual([]);
     expect((await fileContext(owner, conversationId, ["fornecedor"])).length).toBe(1);
