@@ -86,3 +86,11 @@ it("keeps a topic-specific memory request filtered", async () => {
   await buildContext("owner", "Minhas memórias sobre leitura");
   expect(queries.memory.findMany.mock.calls[0][0].where.OR).toContainEqual({content:{contains:"leitura",mode:"insensitive"}});
 });
+
+it("retains bounded file references while leaving room for every other domain", () => {
+  const text = serializeContext({ files: Array.from({ length: 8 }, (_, i) => ({ id: String(i), name: "Fonte.pdf", page: i + 1, content: '\\"'.repeat(900), href: `/arquivos/${i}#pagina-${i + 1}` })), memories: [{id:"m",content:'\\"'.repeat(5000),summary:null,classification:"FACT"}], conversations: [{id:"msg",conversationId:"c",title:"Title",role:"user",content:"Prior context",createdAt:new Date()}], tasks:[{id:"t",title:"Task",status:"TODO",dueAt:null}], projects:[{id:"p",name:"Project",description:null,status:"ACTIVE"}], goals:[{id:"g",title:"Goal",description:null,status:"active",progress:30,dueAt:null,projectId:null}] });
+  expect(text.length).toBeLessThanOrEqual(12000);
+  const result = JSON.parse(text);
+  for (const key of ["files", "memories", "conversations", "tasks", "projects", "goals"]) expect(result[key].length).toBeGreaterThan(0);
+  expect(result.files[0].href).toBe("/arquivos/0#pagina-1");
+});

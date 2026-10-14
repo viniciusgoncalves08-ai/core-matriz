@@ -1,9 +1,11 @@
+import { fileContext, type FileExcerpt } from "@/features/files/file-service";
 import { buildProjectContext } from "@/features/project-context/project-context-service";
 import { isMemoryProfileRequest } from "./memory-intent";
 import { expandRecallTerms, recallConversations, type ConversationExcerpt } from "./conversation-recall";
 import { db } from "@/lib/db";
 
 export type NexusContext = {
+  files?: FileExcerpt[];
   projectScope?: { id: string; name: string; totals: { memories: number; tasks: number; openTasks: number; goals: number; conversations: number } };
   conversations?: ConversationExcerpt[];
   memories: Array<{ id: string; summary: string | null; content: string; classification: string; source?: string | null; confidence?: number }>;
@@ -25,13 +27,14 @@ export function extractContextTerms(message: string): string[] {
 }
 
 export async function buildContext(userId: string, message: string, options: { projectId?: string | null; conversationId?: string; recentUserMessages?: string[]; excludeMessageIds?: string[] } = {}): Promise<NexusContext> {
-  if (options.projectId) return buildProjectContext(userId, options.projectId, options.conversationId);
+  const files = options.conversationId ? await fileContext(userId, options.conversationId, extractContextTerms(message), options.projectId) : undefined;
+  if (options.projectId) return { ...await buildProjectContext(userId, options.projectId, options.conversationId), files };
   const profileRequest = isMemoryProfileRequest(message);
   const ownTerms = profileRequest ? [] : extractContextTerms(message);
   const followUp = !profileRequest && /(?:isso|esse|essa|lembra|lembro|anterior|aquele|aquela|plano)/iu.test(message);
   const meaningful = ownTerms.filter(term => !["plano", "aquele", "aquela", "disso"].includes(term));
   const terms = expandRecallTerms(meaningful.length ? ownTerms : followUp ? (options.recentUserMessages ?? []).slice(-3).flatMap(extractContextTerms).filter(term => !["plano", "aquele", "aquela", "disso"].includes(term)).slice(0, 8) : ownTerms);
-  if (!terms.length && !profileRequest) return { memories: [], projects: [], tasks: [], goals: [] };
+  if (!terms.length && !profileRequest) return { memories: [], projects: [], tasks: [], goals: [], ...(files ? { files } : {}) };
   const now = new Date();
   const projectTerms = terms.filter(term => !["projeto", "projetos"].includes(term));
   const goalTerms = terms.filter(term => !["objetivo", "objetivos", "meta", "metas"].includes(term));
@@ -80,18 +83,18 @@ export async function buildContext(userId: string, message: string, options: { p
     recallConversations(userId, terms.filter(term => !["projeto", "projetos", "tarefa", "tarefas", "objetivo", "objetivos", "meta", "metas"].includes(term)), options.excludeMessageIds),
   ]);
 
-  return { memories, projects, tasks, goals, conversations };
+  return { memories, projects, tasks, goals, conversations, files };
 }
 
 export function serializeContext(context: NexusContext): string {
   // Budget is measured on serialized characters (not an exact token count).
   const bounded: NexusContext = { ...(context.projectScope ? { projectScope: context.projectScope } : {}), memories: [], projects: [], tasks: [], goals: [], conversations: [] };
-  for (const key of ["memories", "conversations", "projects", "tasks", "goals"] as const) {
+  for (const key of ["files", "memories", "conversations", "projects", "tasks", "goals"] as const) {
     for (const item of context[key] ?? []) {
       const candidate = Object.fromEntries(Object.entries(item).map(([name, value]) =>
-        [name, typeof value === "string" ? value.slice(0, 900) : value]));
+        [name, typeof value === "string" ? value.slice(0, context.files?.length && key !== "files" ? 650 : 900) : value]));
       const trial = { ...bounded, [key]: [...(bounded[key] ?? []), candidate] };
-      if (JSON.stringify(trial[key]).length <= (key === "conversations" ? 3300 : 2100) && JSON.stringify(trial).length <= 12000) Object.assign(bounded, trial);
+      if (JSON.stringify(trial[key]).length <= (key === "files" ? 4000 : context.files?.length ? (key === "conversations" ? 2000 : 1450) : (key === "conversations" ? 3300 : 2100)) && JSON.stringify(trial).length <= 12000) Object.assign(bounded, trial);
     }
   }
   return JSON.stringify(bounded);

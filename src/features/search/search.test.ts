@@ -1,10 +1,10 @@
 import { beforeEach, expect, it, vi } from "vitest";
-const m = vi.hoisted(() => ({ session: vi.fn(), task: { findMany: vi.fn() }, project: { findMany: vi.fn() }, goal: { findMany: vi.fn() }, memory: { findMany: vi.fn() }, conversation: { findMany: vi.fn() } }));
+const m = vi.hoisted(() => ({ session: vi.fn(), attachment: { findMany: vi.fn() }, task: { findMany: vi.fn() }, project: { findMany: vi.fn() }, goal: { findMany: vi.fn() }, memory: { findMany: vi.fn() }, conversation: { findMany: vi.fn() } }));
 vi.mock("@/lib/db", () => ({ db: m }));
 vi.mock("@/lib/auth", () => ({ getSessionUserId: m.session }));
 import { globalSearch } from "./search-service";
 import { GET } from "@/app/api/search/route";
-beforeEach(() => { vi.clearAllMocks(); for (const model of [m.task,m.project,m.goal,m.memory,m.conversation]) model.findMany.mockResolvedValue([]); });
+beforeEach(() => { vi.clearAllMocks(); for (const model of [m.task,m.project,m.goal,m.memory,m.conversation,m.attachment]) model.findMany.mockResolvedValue([]); });
 it("rejects anonymous requests before querying the database", async () => {
  m.session.mockResolvedValue(null);
  expect((await GET(new Request("http://localhost/api/search?q=teste"))).status).toBe(401);
@@ -19,7 +19,7 @@ it("uses authenticated ownership on all queries and prevents caching", async () 
  m.session.mockResolvedValue("owner");
  const response = await GET(new Request("http://localhost/api/search?q=teste"));
  expect(response.status).toBe(200); expect(response.headers.get("Cache-Control")).toBe("private, no-store");
- for (const model of [m.task,m.project,m.goal,m.memory,m.conversation]) expect(model.findMany.mock.calls[0][0].where.userId).toBe("owner");
+ for (const model of [m.task,m.project,m.goal,m.memory,m.conversation,m.attachment]) expect(model.findMany.mock.calls[0][0].where.userId).toBe("owner");
 });
 it("filters categories and links to the actual conversation route", async () => {
  m.conversation.findMany.mockResolvedValue([{id:"conversation-1",title:"Teste"}]);
